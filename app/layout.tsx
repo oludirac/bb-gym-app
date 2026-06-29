@@ -9,6 +9,10 @@ export const metadata: Metadata = {
     capable: true,
     title: "BB Gym",
     statusBarStyle: "black-translucent"
+  },
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon.svg"
   }
 };
 

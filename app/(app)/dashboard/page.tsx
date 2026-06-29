@@ -7,7 +7,9 @@ const dashboardItems = [
   ["/programs", "Programs", "Follow a copied plan and track completion."],
   ["/goals", "Goals", "Set simple training targets."],
   ["/bodyweight", "Bodyweight", "Log weight with kg/lb-aware display."],
-  ["/progress", "Progress", "Review volume, consistency, and history."]
+  ["/progress", "Progress", "Review volume, consistency, and history."],
+  ["/export", "Export", "Download JSON or workout CSV backups."],
+  ["/install", "Install", "Add the app to your iPhone Home Screen."]
 ];
 
 export default async function DashboardPage() {
