@@ -76,9 +76,17 @@ export default async function ExercisesPage({
         <p className="text-sm font-medium text-[color:var(--accent)]">
           Library
         </p>
-        <h1 className="text-3xl font-semibold tracking-normal">Exercises</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-3xl font-semibold tracking-normal">Exercises</h1>
+          <Link
+            href="/exercises/new"
+            className="flex min-h-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950"
+          >
+            New
+          </Link>
+        </div>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Browse seeded movements by category, difficulty, and muscle.
+          Browse built-in and custom movements by category, difficulty, and muscle.
         </p>
       </header>
 
@@ -183,9 +191,16 @@ export default async function ExercisesPage({
                       {formatValue(exercise.difficulty)}
                     </p>
                   </div>
-                  <span className="shrink-0 rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold capitalize text-zinc-300">
-                    {formatValue(exercise.movement_pattern)}
-                  </span>
+                  <div className="grid shrink-0 justify-items-end gap-2">
+                    <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold capitalize text-zinc-300">
+                      {formatValue(exercise.movement_pattern)}
+                    </span>
+                    {!exercise.is_builtin ? (
+                      <span className="rounded-md bg-[color:var(--accent)] px-2 py-1 text-[11px] font-semibold text-zinc-950">
+                        Custom
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 <dl className="mt-4 grid gap-3 text-sm">

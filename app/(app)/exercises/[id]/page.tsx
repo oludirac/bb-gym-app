@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FormSubmitButton } from "@/components/form-submit-button";
+import { deleteCustomExercise } from "@/app/(app)/exercises/actions";
 import { getExerciseDetail } from "@/lib/exercises/queries";
 import { requireUser } from "@/lib/auth/session";
 
@@ -41,7 +43,7 @@ function MuscleList({
 export default async function ExerciseDetailPage({
   params
 }: ExerciseDetailPageProps) {
-  const [{ id }, { supabase }] = await Promise.all([params, requireUser()]);
+  const [{ id }, { supabase, user }] = await Promise.all([params, requireUser()]);
   const exercise = await getExerciseDetail(supabase, id);
 
   if (!exercise) {
@@ -60,6 +62,7 @@ export default async function ExerciseDetailPage({
 
         <header className="space-y-2">
           <p className="text-sm font-medium capitalize text-[color:var(--accent)]">
+            {exercise.is_builtin ? "Built-in" : "Custom"} -{" "}
             {formatValue(exercise.category)}
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
@@ -130,6 +133,18 @@ export default async function ExerciseDetailPage({
             {exercise.notes || "No notes added yet."}
           </p>
         </div>
+
+        {!exercise.is_builtin && exercise.owner_id === user.id ? (
+          <form action={deleteCustomExercise}>
+            <input type="hidden" name="exerciseId" value={exercise.id} />
+            <FormSubmitButton
+              pendingLabel="Deleting..."
+              className="min-h-11 w-full rounded-md border border-red-500/40 px-4 text-sm font-semibold text-red-200 transition-opacity disabled:cursor-wait disabled:opacity-70"
+            >
+              Delete Custom Exercise
+            </FormSubmitButton>
+          </form>
+        ) : null}
       </section>
     </div>
   );

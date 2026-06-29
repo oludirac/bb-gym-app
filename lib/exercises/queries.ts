@@ -14,8 +14,10 @@ export type ExerciseSummary = {
   difficulty: string | null;
   equipment: string[];
   id: string;
+  is_builtin: boolean;
   movement_pattern: string | null;
   name: string;
+  owner_id: string | null;
   primaryMuscles: ExerciseMuscle[];
   slug: string;
 };
@@ -63,14 +65,18 @@ type RawExercise = {
   exercise_muscles?: RawMuscleJoin[] | null;
   id: string;
   instructions?: string | null;
+  is_builtin: boolean;
   movement_pattern: string | null;
   name: string;
   notes?: string | null;
+  owner_id: string | null;
   slug: string;
 };
 
 const exerciseSelect = `
   id,
+  is_builtin,
+  owner_id,
   name,
   slug,
   category,
@@ -124,8 +130,10 @@ function mapExerciseSummary(raw: RawExercise): ExerciseSummary {
     difficulty: raw.difficulty,
     equipment: raw.equipment ?? [],
     id: raw.id,
+    is_builtin: raw.is_builtin,
     movement_pattern: raw.movement_pattern,
     name: raw.name,
+    owner_id: raw.owner_id,
     primaryMuscles: mapMuscles(raw, "primary"),
     slug: raw.slug
   };
@@ -197,7 +205,6 @@ export async function getExerciseSummaries(
   let query = supabase
     .from("exercises")
     .select(exerciseSelect)
-    .eq("is_builtin", true)
     .is("deleted_at", null)
     .order("name", { ascending: true });
 
@@ -234,7 +241,6 @@ export async function getExerciseDetail(
     .from("exercises")
     .select(exerciseSelect)
     .eq("id", exerciseId)
-    .eq("is_builtin", true)
     .is("deleted_at", null)
     .maybeSingle();
 
