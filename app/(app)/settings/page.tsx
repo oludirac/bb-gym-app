@@ -23,7 +23,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-normal">Settings</h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Manage the profile defaults used across workout logging.
+          Name, units, and default rest time.
         </p>
       </header>
 
@@ -85,7 +85,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </label>
 
         <FormSubmitButton pendingLabel="Saving...">
-          Save Settings
+          Save settings
         </FormSubmitButton>
       </form>
     </div>

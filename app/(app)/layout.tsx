@@ -4,11 +4,11 @@ import { signOut } from "@/app/(auth)/actions";
 import { requireUser } from "@/lib/auth/session";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard", label: "Today" },
   { href: "/exercises", label: "Exercises" },
   { href: "/workouts/active", label: "Workout" },
-  { href: "/templates", label: "Templates" },
-  { href: "/programs", label: "Programs" },
+  { href: "/templates", label: "Routines" },
+  { href: "/programs", label: "Plans" },
   { href: "/settings", label: "Settings" }
 ];
 

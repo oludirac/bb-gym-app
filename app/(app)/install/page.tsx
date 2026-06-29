@@ -14,13 +14,13 @@ export default async function InstallPage() {
           Add to iPhone
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Use Safari to add BB Gym to your Home Screen as a standalone app.
+          Use Safari to keep BB Gym on your Home Screen.
         </p>
       </header>
 
       <section className="space-y-3">
         {[
-          "Open the deployed app in Safari.",
+          "Open BB Gym in Safari.",
           "Tap the Share button.",
           "Choose Add to Home Screen.",
           "Open BB Gym from the new Home Screen icon."
@@ -41,7 +41,7 @@ export default async function InstallPage() {
         href="/dashboard"
         className="flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
       >
-        Back to Dashboard
+        Back to today
       </Link>
     </div>
   );

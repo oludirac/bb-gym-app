@@ -28,17 +28,17 @@ export default async function ProgramImportPage() {
           href="/programs"
           className="inline-flex min-h-10 items-center text-sm font-semibold text-[color:var(--accent)]"
         >
-          Back to programs
+          Back to plans
         </Link>
         <header className="space-y-2">
           <p className="text-sm font-medium text-[color:var(--accent)]">
             Import
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            Program CSV
+            Plan CSV
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Paste CSV rows. Exercises must already exist by matching name.
+            Paste rows. Exercise names need to match existing exercises.
           </p>
         </header>
       </div>
@@ -54,7 +54,7 @@ export default async function ProgramImportPage() {
           />
         </label>
         <FormSubmitButton pendingLabel="Importing...">
-          Import Program
+          Import plan
         </FormSubmitButton>
       </form>
 
@@ -63,7 +63,7 @@ export default async function ProgramImportPage() {
         {imports.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
             <p className="text-sm text-[color:var(--muted)]">
-              No imports have been attempted yet.
+              No imports yet.
             </p>
           </div>
         ) : (

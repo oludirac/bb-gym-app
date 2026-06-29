@@ -57,7 +57,7 @@ function SetEditor({ set }: { set: WorkoutSet }) {
         <div className="mt-3 grid grid-cols-3 gap-2">
           <label className="grid gap-1">
             <span className="text-[11px] font-semibold text-[color:var(--muted)]">
-              Kg
+              kg
             </span>
             <input
               name="weightKg"
@@ -113,7 +113,7 @@ function SetEditor({ set }: { set: WorkoutSet }) {
           </label>
           <label className="grid gap-1">
             <span className="text-[11px] font-semibold text-[color:var(--muted)]">
-              Rest Sec
+              Rest
             </span>
             <input
               name="restSeconds"
@@ -140,7 +140,7 @@ function SetEditor({ set }: { set: WorkoutSet }) {
           pendingLabel="Deleting..."
           className="min-h-9 rounded-md border border-red-500/40 px-3 text-xs font-semibold text-red-200 disabled:cursor-wait disabled:opacity-70"
         >
-          Delete Set
+          Delete set
         </FormSubmitButton>
       </form>
     </div>
@@ -193,7 +193,7 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
             pendingLabel="Adding..."
             className="min-h-11 w-full rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950 disabled:cursor-wait disabled:opacity-70"
           >
-            Add Set
+            Add set
           </FormSubmitButton>
         </form>
 
@@ -205,10 +205,10 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
           />
           <input type="hidden" name="copySetId" value={lastSet?.id ?? ""} />
           <FormSubmitButton
-            pendingLabel="Copying..."
+            pendingLabel="Repeating..."
             className="min-h-11 w-full rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
           >
-            Copy Last
+            Repeat last
           </FormSubmitButton>
         </form>
       </div>
@@ -231,16 +231,16 @@ export default async function ActiveWorkoutPage() {
             Workout
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            No active workout
+            No workout running
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Start a blank session and add exercises as you train.
+            Start from scratch and add lifts as you go.
           </p>
         </header>
 
         <form action={startBlankWorkout}>
           <FormSubmitButton pendingLabel="Starting...">
-            Start Blank Workout
+            Start workout
           </FormSubmitButton>
         </form>
 
@@ -248,7 +248,7 @@ export default async function ActiveWorkoutPage() {
           href="/workouts"
           className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
         >
-          Workout History
+          History
         </Link>
       </div>
     );
@@ -258,7 +258,7 @@ export default async function ActiveWorkoutPage() {
     <div className="space-y-6 pb-20">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Active workout
+        Workout
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
           {activeWorkout.name ?? "Workout"}
@@ -271,7 +271,7 @@ export default async function ActiveWorkoutPage() {
       <form action={addExerciseToWorkout} className="space-y-2">
         <input type="hidden" name="workoutId" value={activeWorkout.id} />
         <label className="grid gap-2">
-          <span className="text-sm font-medium">Add exercise</span>
+          <span className="text-sm font-medium">Add lift</span>
           <select
             name="exerciseId"
             className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base"
@@ -286,7 +286,7 @@ export default async function ActiveWorkoutPage() {
           </select>
         </label>
         <FormSubmitButton pendingLabel="Adding exercise...">
-          Add Exercise
+          Add lift
         </FormSubmitButton>
       </form>
 
@@ -295,7 +295,7 @@ export default async function ActiveWorkoutPage() {
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
             <h2 className="text-base font-semibold">No exercises yet</h2>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-              Add your first movement above.
+              Add the first lift above.
             </p>
           </div>
         ) : (

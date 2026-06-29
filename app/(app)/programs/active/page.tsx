@@ -55,7 +55,7 @@ function DayCard({
           <input type="hidden" name="enrollmentId" value={enrollmentId} />
           <input type="hidden" name="programDayId" value={day.id} />
           <FormSubmitButton pendingLabel="Starting...">
-            Start This Day
+            Start workout
           </FormSubmitButton>
         </form>
         {!isCurrent ? (
@@ -67,7 +67,7 @@ function DayCard({
               pendingLabel="Setting..."
               className="min-h-11 w-full rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
             >
-              Set Current
+              Make current
             </FormSubmitButton>
           </form>
         ) : null}
@@ -94,20 +94,20 @@ export default async function ActiveProgramPage() {
       <div className="space-y-6">
         <header className="space-y-2">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            Active program
+            Current plan
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            No active program
+            No current plan
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Copy a public program or set one of your programs active.
+            Save a starter plan or use one of yours.
           </p>
         </header>
         <Link
           href="/programs"
           className="flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
         >
-          Open Program Library
+          Choose a plan
         </Link>
       </div>
     );
@@ -119,13 +119,13 @@ export default async function ActiveProgramPage() {
     return (
       <div className="space-y-4">
         <h1 className="text-3xl font-semibold tracking-normal">
-          Program unavailable
+          Plan unavailable
         </h1>
         <Link
           href="/programs"
           className="flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
         >
-          Back to Programs
+          Back to plans
         </Link>
       </div>
     );
@@ -135,21 +135,20 @@ export default async function ActiveProgramPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Active program
+          Current plan
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
           {program.name}
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
           Week {enrollment.current_week}, day {enrollment.current_day}.{" "}
-          {enrollment.completed_workouts}/{enrollment.total_days} program
-          workouts finished.
+          {enrollment.completed_workouts}/{enrollment.total_days} workouts done.
         </p>
       </header>
 
       <section className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">Completion</h2>
+          <h2 className="text-base font-semibold">Done</h2>
           <p className="text-sm font-semibold">
             {enrollment.percent_complete}%
           </p>
@@ -188,7 +187,7 @@ export default async function ActiveProgramPage() {
           pendingLabel="Completing..."
           className="min-h-12 w-full rounded-md border border-[color:var(--panel-border)] px-4 text-base font-semibold disabled:cursor-wait disabled:opacity-70"
         >
-          Finish Program
+          Mark plan done
         </FormSubmitButton>
       </form>
     </div>

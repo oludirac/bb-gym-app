@@ -17,11 +17,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <section className="space-y-6">
         <div className="space-y-3">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            BB Gym Tracker
+            BB Gym
           </p>
-          <h1 className="text-3xl font-semibold tracking-normal">Login</h1>
+          <h1 className="text-3xl font-semibold tracking-normal">Log in</h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Sign in to continue logging workouts, programs, goals, and progress.
+            Get back to your workouts.
           </p>
         </div>
 
@@ -60,14 +60,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </label>
 
           <FormSubmitButton pendingLabel="Logging in...">
-            Login
+            Log in
           </FormSubmitButton>
         </form>
 
         <p className="text-center text-sm text-[color:var(--muted)]">
           No account yet?{" "}
           <Link href="/signup" className="font-semibold text-zinc-100">
-            Create one
+            Sign up
           </Link>
         </p>
       </section>

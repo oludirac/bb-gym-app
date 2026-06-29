@@ -2,15 +2,16 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/session";
 
 const dashboardItems = [
-  ["/workouts/active", "Active workout", "Resume or start a fast logging session."],
-  ["/templates", "Templates", "Reuse your regular sessions."],
-  ["/programs", "Programs", "Follow a copied plan and track completion."],
-  ["/goals", "Goals", "Set simple training targets."],
-  ["/bodyweight", "Bodyweight", "Log weight with kg/lb-aware display."],
-  ["/progress", "Progress", "Review volume, consistency, and history."],
-  ["/import/programs", "Import", "Paste a program CSV."],
-  ["/export", "Export", "Download JSON or workout CSV backups."],
-  ["/install", "Install", "Add the app to your iPhone Home Screen."]
+  ["/workouts/active", "Workout", "Start or resume."],
+  ["/templates", "Routines", "Your usual sessions."],
+  ["/programs", "Plans", "Run a training plan."],
+  ["/exercises", "Exercises", "Browse or add lifts."],
+  ["/progress", "Progress", "Volume, best lifts, consistency."],
+  ["/bodyweight", "Weight", "Log a weigh-in."],
+  ["/goals", "Goals", "Targets worth checking."],
+  ["/import/programs", "Import", "Paste a plan CSV."],
+  ["/export", "Export", "Download your data."],
+  ["/install", "Install", "Add to Home Screen."]
 ];
 
 export default async function DashboardPage() {
@@ -28,7 +29,7 @@ export default async function DashboardPage() {
           Hi, {displayName}
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Your account is ready. Current display units: {unitPreference}.
+          Units: {unitPreference}. Pick what you are doing next.
         </p>
       </header>
 

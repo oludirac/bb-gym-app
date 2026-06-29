@@ -115,10 +115,10 @@ export default async function GoalsPage() {
           Goals
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
-          Training Goals
+          Goals
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Set simple strength, bodyweight, consistency, count, or volume targets.
+          Keep a few targets in view.
         </p>
       </header>
 
@@ -126,7 +126,7 @@ export default async function GoalsPage() {
         action={createGoal}
         className="space-y-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4"
       >
-        <h2 className="text-base font-semibold">Create goal</h2>
+        <h2 className="text-base font-semibold">Add goal</h2>
         <div className="grid grid-cols-2 gap-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Type</span>
@@ -204,9 +204,9 @@ export default async function GoalsPage() {
         <h2 className="text-base font-semibold">Active goals</h2>
         {activeGoals.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
-            <h3 className="text-base font-semibold">No active goals</h3>
+            <h3 className="text-base font-semibold">No goals yet</h3>
             <p className="mt-1 text-sm text-[color:var(--muted)]">
-              Create one above when you have a target in mind.
+              Add one above.
             </p>
           </div>
         ) : (

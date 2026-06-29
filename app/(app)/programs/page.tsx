@@ -24,7 +24,7 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
           </p>
         </div>
         <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold">
-          {program.is_public ? "Public" : "Mine"}
+          {program.is_public ? "Starter" : "Saved"}
         </span>
       </div>
 
@@ -60,13 +60,13 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
           href={`/programs/${program.id}`}
           className="flex min-h-11 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
         >
-          View Program
+          Open
         </Link>
         {!program.is_public ? (
           <form action={enrollProgram}>
             <input type="hidden" name="programId" value={program.id} />
             <FormSubmitButton pendingLabel="Starting...">
-              Set Active Program
+              Use plan
             </FormSubmitButton>
           </form>
         ) : null}
@@ -88,13 +88,13 @@ export default async function ProgramsPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Programs
+          Plans
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
-          Program Library
+          Plans
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Copy a starter plan, make it yours, then run sessions from the active program page.
+          Save a starter plan or run one of yours.
         </p>
       </header>
 
@@ -102,7 +102,7 @@ export default async function ProgramsPage() {
         href="/import/programs"
         className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
       >
-        Import Program CSV
+        Import plan CSV
       </Link>
 
       {activeEnrollment ? (
@@ -111,7 +111,7 @@ export default async function ProgramsPage() {
           className="block rounded-md border border-[color:var(--accent)] bg-[color:var(--panel)] p-4"
         >
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            Active program
+            Current plan
           </p>
           <h2 className="mt-1 text-lg font-semibold">
             {activeEnrollment.program_name}
@@ -125,12 +125,12 @@ export default async function ProgramsPage() {
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">My programs</h2>
+        <h2 className="text-base font-semibold">Your plans</h2>
         {ownPrograms.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
-            <h3 className="text-base font-semibold">No copied programs yet</h3>
+            <h3 className="text-base font-semibold">No saved plans yet</h3>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-              Open a public program and copy it into your account.
+              Open a starter plan and save it.
             </p>
           </div>
         ) : (
@@ -143,7 +143,7 @@ export default async function ProgramsPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Public starters</h2>
+        <h2 className="text-base font-semibold">Starter plans</h2>
         <div className="grid gap-3">
           {publicPrograms.map((program) => (
             <ProgramCard key={program.id} program={program} />

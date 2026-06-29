@@ -6,14 +6,13 @@ export default function HomePage() {
       <section className="space-y-8">
         <div className="space-y-3">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            BB Gym Tracker
+            BB Gym
           </p>
           <h1 className="text-4xl font-semibold tracking-normal">
-            Fast workout logging for iPhone.
+            Log workouts fast.
           </h1>
           <p className="text-base leading-7 text-[color:var(--muted)]">
-            Track workouts, templates, programs, goals, and bodyweight from a
-            mobile-first PWA.
+            Built for gym sessions, saved routines, plans, and progress.
           </p>
         </div>
 
@@ -22,13 +21,13 @@ export default function HomePage() {
             href="/dashboard"
             className="flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
           >
-            Open Dashboard
+            Open app
           </Link>
           <Link
             href="/login"
             className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-base font-semibold"
           >
-            Login
+            Log in
           </Link>
         </div>
       </section>

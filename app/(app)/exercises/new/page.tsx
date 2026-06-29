@@ -82,10 +82,10 @@ export default async function NewExercisePage({
             Custom lift
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            New Exercise
+            New exercise
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Add a movement that is private to your account.
+            Add a lift for yourself.
           </p>
         </header>
       </div>
@@ -184,7 +184,7 @@ export default async function NewExercisePage({
         </fieldset>
 
         <FormSubmitButton pendingLabel="Creating exercise...">
-          Create Exercise
+          Create exercise
         </FormSubmitButton>
       </form>
     </div>

@@ -39,7 +39,7 @@ export async function copyProgram(formData: FormData) {
       difficulty: program.difficulty,
       equipment_required: program.equipment_required,
       is_public: false,
-      name: `${program.name} Copy`,
+      name: program.name,
       owner_id: user.id
     })
     .select("id")

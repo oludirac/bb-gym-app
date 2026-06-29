@@ -22,7 +22,7 @@ export default async function WorkoutsPage() {
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">Workouts</h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Completed sessions from newest to oldest.
+          Finished workouts.
         </p>
       </header>
 
@@ -30,7 +30,7 @@ export default async function WorkoutsPage() {
         href="/workouts/active"
         className="flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
       >
-        Active Workout
+        Current workout
       </Link>
 
       <section className="grid gap-3">

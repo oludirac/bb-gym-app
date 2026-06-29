@@ -21,10 +21,10 @@ export default async function ProgressPage() {
           Progress
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
-          Training Snapshot
+          Progress
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Useful numbers from completed workouts.
+          From finished workouts.
         </p>
       </header>
 
@@ -56,12 +56,12 @@ export default async function ProgressPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Estimated best lifts</h2>
+        <h2 className="text-base font-semibold">Best lifts</h2>
         {summary.best_lifts.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
             <h3 className="text-base font-semibold">No lifting data yet</h3>
             <p className="mt-1 text-sm text-[color:var(--muted)]">
-              Complete a workout with weight and reps to populate this.
+              Log weight and reps in a finished workout.
             </p>
           </div>
         ) : (
@@ -75,7 +75,7 @@ export default async function ProgressPage() {
                   {lift.exercise_name}
                 </h3>
                 <p className="mt-1 text-sm text-[color:var(--muted)]">
-                  Estimated 1RM {formatWeight(lift.estimated_one_rep_max, unit)}
+                  Est. 1RM {formatWeight(lift.estimated_one_rep_max, unit)}
                 </p>
                 <p className="mt-2 text-sm">
                   Best set: {formatWeight(lift.weight_kg, unit)} x {lift.reps}
@@ -87,11 +87,11 @@ export default async function ProgressPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Muscle group frequency</h2>
+        <h2 className="text-base font-semibold">Muscles trained</h2>
         {summary.muscle_groups.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
             <p className="text-sm text-[color:var(--muted)]">
-              Muscle frequency appears once logged sets map to exercises.
+              This fills in after finished workouts.
             </p>
           </div>
         ) : (
@@ -119,7 +119,7 @@ export default async function ProgressPage() {
         href="/export"
         className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
       >
-        Export Data
+        Export data
       </Link>
     </div>
   );

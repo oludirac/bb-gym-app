@@ -33,10 +33,10 @@ export default async function BodyweightPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Bodyweight
+          Weight
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
-          Weight Log
+          Weigh-ins
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
           Latest: {latest ? formatWeight(latest.weight_kg, unit) : "No logs yet"}.
@@ -47,7 +47,7 @@ export default async function BodyweightPage() {
         action={saveBodyweightLog}
         className="space-y-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4"
       >
-        <h2 className="text-base font-semibold">Add or update log</h2>
+        <h2 className="text-base font-semibold">Add weigh-in</h2>
         <div className="grid grid-cols-[1fr_1fr] gap-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Date</span>
@@ -81,7 +81,7 @@ export default async function BodyweightPage() {
           placeholder="Notes"
           className="min-h-12 w-full rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base"
         />
-        <FormSubmitButton pendingLabel="Saving...">Save Weight</FormSubmitButton>
+        <FormSubmitButton pendingLabel="Saving...">Save weight</FormSubmitButton>
       </form>
 
       {chartLogs.length > 1 ? (
@@ -114,12 +114,12 @@ export default async function BodyweightPage() {
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Recent logs</h2>
+        <h2 className="text-base font-semibold">Recent</h2>
         {logs.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
-            <h3 className="text-base font-semibold">No bodyweight logs</h3>
+            <h3 className="text-base font-semibold">No weigh-ins yet</h3>
             <p className="mt-1 text-sm text-[color:var(--muted)]">
-              Add your first log above.
+              Add one above.
             </p>
           </div>
         ) : (

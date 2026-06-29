@@ -16,10 +16,10 @@ export default async function TemplatesPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Plans
+          Routines
         </p>
         <div className="flex items-start justify-between gap-3">
-          <h1 className="text-3xl font-semibold tracking-normal">Templates</h1>
+          <h1 className="text-3xl font-semibold tracking-normal">Routines</h1>
           <Link
             href="/templates/new"
             className="flex min-h-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950"
@@ -28,16 +28,16 @@ export default async function TemplatesPage() {
           </Link>
         </div>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Reuse your usual sessions and start workouts with the planned sets already loaded.
+          Save the sessions you repeat.
         </p>
       </header>
 
       <section className="grid gap-3">
         {templates.length === 0 ? (
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
-            <h2 className="text-base font-semibold">No templates yet</h2>
+            <h2 className="text-base font-semibold">No routines yet</h2>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-              Create one for your regular push, pull, legs, or full body days.
+              Add your push, pull, legs, or whatever you actually run.
             </p>
           </div>
         ) : (

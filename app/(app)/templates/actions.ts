@@ -112,7 +112,7 @@ export async function duplicateTemplate(formData: FormData) {
     .from("workout_templates")
     .insert({
       estimated_minutes: template.estimated_minutes,
-      name: `${template.name} Copy`,
+      name: `${template.name} 2`,
       notes: template.notes,
       owner_id: user.id
     })

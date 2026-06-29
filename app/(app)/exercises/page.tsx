@@ -74,7 +74,7 @@ export default async function ExercisesPage({
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Library
+          Exercises
         </p>
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-3xl font-semibold tracking-normal">Exercises</h1>
@@ -86,7 +86,7 @@ export default async function ExercisesPage({
           </Link>
         </div>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Browse built-in and custom movements by category, difficulty, and muscle.
+          Find a lift or add your own.
         </p>
       </header>
 
@@ -145,7 +145,7 @@ export default async function ExercisesPage({
             type="submit"
             className="min-h-12 rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
           >
-            Apply Filters
+            Apply
           </button>
           <Link
             href="/exercises"

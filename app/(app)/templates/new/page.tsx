@@ -13,17 +13,17 @@ export default async function NewTemplatePage() {
           href="/templates"
           className="inline-flex min-h-10 items-center text-sm font-semibold text-[color:var(--accent)]"
         >
-          Back to templates
+          Back to routines
         </Link>
         <header className="space-y-2">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            New template
+            New routine
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            Create template
+            Create routine
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Start with a name, then add exercises and planned sets.
+            Name it, then add exercises and sets.
           </p>
         </header>
       </div>
@@ -62,7 +62,7 @@ export default async function NewTemplatePage() {
         </label>
 
         <FormSubmitButton pendingLabel="Creating...">
-          Create Template
+          Create routine
         </FormSubmitButton>
       </form>
     </div>

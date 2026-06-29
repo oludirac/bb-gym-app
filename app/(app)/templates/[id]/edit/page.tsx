@@ -246,17 +246,17 @@ export default async function EditTemplatePage({
           href="/templates"
           className="inline-flex min-h-10 items-center text-sm font-semibold text-[color:var(--accent)]"
         >
-          Back to templates
+          Back to routines
         </Link>
         <header className="space-y-2">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            Edit template
+            Edit routine
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
             {template.name}
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Add exercises in order, then set your targets.
+            Add exercises, then set the work.
           </p>
         </header>
       </div>
@@ -293,7 +293,7 @@ export default async function EditTemplatePage({
           />
         </label>
         <FormSubmitButton pendingLabel="Saving...">
-          Save Template
+          Save routine
         </FormSubmitButton>
       </form>
 
@@ -324,7 +324,7 @@ export default async function EditTemplatePage({
           <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
             <h2 className="text-base font-semibold">No exercises yet</h2>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-              Add your first exercise above.
+              Add the first lift above.
             </p>
           </div>
         ) : (
@@ -352,10 +352,10 @@ export default async function EditTemplatePage({
           <form action={duplicateTemplate}>
             <input type="hidden" name="templateId" value={template.id} />
             <FormSubmitButton
-              pendingLabel="Copying..."
+              pendingLabel="Duplicating..."
               className="min-h-12 w-full rounded-md border border-[color:var(--panel-border)] px-2 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
             >
-              Copy
+              Duplicate
             </FormSubmitButton>
           </form>
           <form action={deleteTemplate}>

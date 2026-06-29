@@ -32,12 +32,12 @@ export default async function ProgramDetailPage({
           href="/programs"
           className="inline-flex min-h-10 items-center text-sm font-semibold text-[color:var(--accent)]"
         >
-          Back to programs
+          Back to plans
         </Link>
         <header className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm font-medium text-[color:var(--accent)]">
-              {program.is_public ? "Public program" : "My program"}
+              {program.is_public ? "Starter plan" : "My plan"}
             </p>
             <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold capitalize">
               {formatValue(program.difficulty)}
@@ -160,15 +160,15 @@ export default async function ProgramDetailPage({
           {program.is_public ? (
             <form action={copyProgram}>
               <input type="hidden" name="programId" value={program.id} />
-              <FormSubmitButton pendingLabel="Copying...">
-                Copy Program
+              <FormSubmitButton pendingLabel="Saving...">
+                Save plan
               </FormSubmitButton>
             </form>
           ) : (
             <form action={enrollProgram}>
               <input type="hidden" name="programId" value={program.id} />
               <FormSubmitButton pendingLabel="Starting...">
-                Set Active
+                Use plan
               </FormSubmitButton>
             </form>
           )}
@@ -176,7 +176,7 @@ export default async function ProgramDetailPage({
             href="/programs"
             className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
           >
-            Library
+            Plans
           </Link>
         </div>
       </div>

@@ -16,13 +16,13 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       <section className="space-y-6">
         <div className="space-y-3">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            BB Gym Tracker
+            BB Gym
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            Create Account
+            Sign up
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Choose your units now. You can change this anytime in settings.
+            Pick your units. You can change them later.
           </p>
         </div>
 
@@ -87,14 +87,14 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           </fieldset>
 
           <FormSubmitButton pendingLabel="Creating account...">
-            Create Account
+            Create account
           </FormSubmitButton>
         </form>
 
         <p className="text-center text-sm text-[color:var(--muted)]">
           Already have an account?{" "}
           <Link href="/login" className="font-semibold text-zinc-100">
-            Login
+            Log in
           </Link>
         </p>
       </section>
