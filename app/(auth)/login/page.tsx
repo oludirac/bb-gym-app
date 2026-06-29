@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { signIn } from "../actions";
 
 type LoginPageProps = {
@@ -58,12 +59,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             />
           </label>
 
-          <button
-            type="submit"
-            className="min-h-12 w-full rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
-          >
+          <FormSubmitButton pendingLabel="Logging in...">
             Login
-          </button>
+          </FormSubmitButton>
         </form>
 
         <p className="text-center text-sm text-[color:var(--muted)]">

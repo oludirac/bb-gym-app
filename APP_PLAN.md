@@ -12,6 +12,8 @@ The app should support serious workout logging, reusable workout templates, stru
 
 Primary product principle: the active workout logging experience must be extremely fast. Prioritize minimal taps, one-handed use, sticky controls, quick set entry, previous set copying, previous workout comparison, reliable autosave, and resumable unfinished workouts.
 
+Small private-app principle: this is for the owner and a few friends, not a public SaaS product. Prefer practical defaults, direct flows, and simple admin assumptions over enterprise-grade onboarding, permissions, billing, or growth features. If Supabase email confirmation gets in the way of private testing, disable confirmation in Supabase Auth settings or keep confirmation enabled only once redirect URLs are correctly configured for the deployed Vercel domain.
+
 ## Technical Stack
 
 - Next.js App Router

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { signUp } from "../actions";
 
 type SignupPageProps = {
@@ -85,12 +86,9 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
             </div>
           </fieldset>
 
-          <button
-            type="submit"
-            className="min-h-12 w-full rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
-          >
+          <FormSubmitButton pendingLabel="Creating account...">
             Create Account
-          </button>
+          </FormSubmitButton>
         </form>
 
         <p className="text-center text-sm text-[color:var(--muted)]">

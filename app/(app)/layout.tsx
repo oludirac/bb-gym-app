@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { signOut } from "@/app/(auth)/actions";
 import { requireUser } from "@/lib/auth/session";
 
@@ -28,12 +29,12 @@ export default async function AppLayout({
           </p>
         </div>
         <form action={signOut}>
-          <button
-            type="submit"
+          <FormSubmitButton
+            pendingLabel="Logging out..."
             className="min-h-10 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
           >
             Logout
-          </button>
+          </FormSubmitButton>
         </form>
       </header>
       <div className="flex-1 px-4 pb-24 pt-5">{children}</div>

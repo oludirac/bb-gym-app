@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth/session";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import { updateProfileSettings } from "./actions";
 
 type SettingsPageProps = {
@@ -83,12 +84,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           />
         </label>
 
-        <button
-          type="submit"
-          className="min-h-12 w-full rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
-        >
+        <FormSubmitButton pendingLabel="Saving...">
           Save Settings
-        </button>
+        </FormSubmitButton>
       </form>
     </div>
   );

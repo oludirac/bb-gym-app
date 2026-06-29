@@ -17,8 +17,17 @@ function redirectWithError(path: string, message: string): never {
 async function getOrigin() {
   const headerStore = await headers();
   const origin = headerStore.get("origin");
+  const forwardedHost = headerStore.get("x-forwarded-host");
+  const host = forwardedHost || headerStore.get("host");
+  const forwardedProto = headerStore.get("x-forwarded-proto") || "https";
+  const vercelUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : undefined;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const resolvedOrigin =
+    origin || (host ? `${forwardedProto}://${host}` : undefined) || vercelUrl || appUrl;
 
-  return process.env.NEXT_PUBLIC_APP_URL || origin || "http://localhost:3000";
+  return (resolvedOrigin || "http://localhost:3000").replace(/\/$/, "");
 }
 
 export async function signIn(formData: FormData) {
