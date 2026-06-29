@@ -54,7 +54,7 @@ function SetEditor({ set }: { set: WorkoutSet }) {
           </FormSubmitButton>
         </div>
 
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2">
           <label className="grid gap-1">
             <span className="text-[11px] font-semibold text-[color:var(--muted)]">
               Kg
@@ -108,6 +108,20 @@ function SetEditor({ set }: { set: WorkoutSet }) {
               step="0.5"
               min="0"
               defaultValue={set.rir ?? ""}
+              className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+            />
+          </label>
+          <label className="grid gap-1">
+            <span className="text-[11px] font-semibold text-[color:var(--muted)]">
+              Rest Sec
+            </span>
+            <input
+              name="restSeconds"
+              type="number"
+              inputMode="numeric"
+              step="5"
+              min="0"
+              defaultValue={set.rest_seconds ?? ""}
               className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
             />
           </label>

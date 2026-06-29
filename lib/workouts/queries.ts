@@ -5,6 +5,7 @@ export type WorkoutSet = {
   id: string;
   notes: string | null;
   reps: number | null;
+  rest_seconds: number | null;
   rir: number | null;
   rpe: number | null;
   set_type: string;
@@ -77,6 +78,7 @@ const workoutSelect = `
       set_type,
       weight_kg,
       reps,
+      rest_seconds,
       rpe,
       rir,
       notes,

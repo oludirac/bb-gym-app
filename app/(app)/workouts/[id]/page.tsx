@@ -75,12 +75,23 @@ export default async function WorkoutDetailPage({
               {exercise.sets.map((set) => (
                 <div
                   key={set.id}
-                  className="grid grid-cols-4 gap-2 rounded-md bg-zinc-950 p-3 text-sm"
+                  className="grid gap-1 rounded-md bg-zinc-950 p-3 text-sm"
                 >
-                  <span className="font-semibold">#{set.sort_order}</span>
-                  <span>{set.weight_kg ?? "-"} kg</span>
-                  <span>{set.reps ?? "-"} reps</span>
-                  <span className="capitalize">{set.set_type}</span>
+                  <div className="grid grid-cols-4 gap-2">
+                    <span className="font-semibold">#{set.sort_order}</span>
+                    <span>{set.weight_kg ?? "-"} kg</span>
+                    <span>{set.reps ?? "-"} reps</span>
+                    <span className="capitalize">{set.set_type}</span>
+                  </div>
+                  <p className="text-xs text-[color:var(--muted)]">
+                    RPE {set.rpe ?? "-"} - RIR {set.rir ?? "-"} - Rest{" "}
+                    {set.rest_seconds ?? "-"}s
+                  </p>
+                  {set.notes ? (
+                    <p className="text-xs text-[color:var(--muted)]">
+                      {set.notes}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>

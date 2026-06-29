@@ -7,6 +7,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/exercises", label: "Exercises" },
   { href: "/workouts/active", label: "Workout" },
+  { href: "/templates", label: "Templates" },
   { href: "/programs", label: "Programs" },
   { href: "/settings", label: "Settings" }
 ];
@@ -39,7 +40,7 @@ export default async function AppLayout({
       </header>
       <div className="flex-1 px-4 pb-24 pt-5">{children}</div>
       <nav className="fixed inset-x-0 bottom-0 border-t border-[color:var(--panel-border)] bg-zinc-950/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
           {navItems.map((item) => (
             <Link
               key={item.href}

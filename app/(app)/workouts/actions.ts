@@ -155,6 +155,7 @@ export async function saveWorkoutSet(formData: FormData) {
       completed_at: new Date().toISOString(),
       notes: fieldValue(formData, "notes") || null,
       reps: optionalNumber(fieldValue(formData, "reps")),
+      rest_seconds: optionalNumber(fieldValue(formData, "restSeconds")),
       rir: optionalNumber(fieldValue(formData, "rir")),
       rpe: optionalNumber(fieldValue(formData, "rpe")),
       set_type: fieldValue(formData, "setType") || "working",
@@ -203,18 +204,23 @@ export async function finishWorkout(formData: FormData) {
 
   const { data: exercises } = await supabase
     .from("workout_exercises")
-    .select("id, workout_sets(weight_kg, reps)")
+    .select("id, workout_sets(weight_kg, reps, completed_at)")
     .eq("workout_id", workoutId);
 
   const totalVolumeKg = (exercises ?? []).reduce((total, exercise) => {
     const sets = (exercise.workout_sets ?? []) as {
       reps: number | null;
       weight_kg: number | null;
+      completed_at: string | null;
     }[];
 
     return (
       total +
       sets.reduce((setTotal, set) => {
+        if (!set.completed_at) {
+          return setTotal;
+        }
+
         return setTotal + Number(set.weight_kg ?? 0) * Number(set.reps ?? 0);
       }, 0)
     );
