@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Copy, Play, Plus, TimerReset, Trash2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   deleteTemplate,
@@ -22,8 +23,9 @@ export default async function TemplatesPage() {
           <h1 className="text-3xl font-semibold tracking-normal">Routines</h1>
           <Link
             href="/templates/new"
-            className="flex min-h-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950"
           >
+            <Plus aria-hidden="true" className="size-4" />
             New
           </Link>
         </div>
@@ -34,7 +36,7 @@ export default async function TemplatesPage() {
 
       <section className="grid gap-3">
         {templates.length === 0 ? (
-          <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+          <div className="app-card-flat p-4">
             <h2 className="text-base font-semibold">No routines yet</h2>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
               Add your push, pull, legs, or whatever you actually run.
@@ -44,10 +46,14 @@ export default async function TemplatesPage() {
           templates.map((template) => (
             <article
               key={template.id}
-              className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4"
+              className="app-card-flat p-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="flex min-w-0 gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+                    <TimerReset aria-hidden="true" className="size-5" />
+                  </div>
+                  <div className="min-w-0">
                   <h2 className="text-lg font-semibold">{template.name}</h2>
                   <p className="mt-1 text-sm text-[color:var(--muted)]">
                     {template.exercise_count} exercise
@@ -56,10 +62,11 @@ export default async function TemplatesPage() {
                       ? ` - ${template.estimated_minutes} min`
                       : ""}
                   </p>
+                  </div>
                 </div>
                 <Link
                   href={`/templates/${template.id}/edit`}
-                  className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
+                  className="flex min-h-10 shrink-0 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
                 >
                   Edit
                 </Link>
@@ -75,7 +82,8 @@ export default async function TemplatesPage() {
                 <form action={startWorkoutFromTemplate}>
                   <input type="hidden" name="templateId" value={template.id} />
                   <FormSubmitButton pendingLabel="Starting...">
-                    Start Workout
+                    <Play aria-hidden="true" className="size-4 fill-current" />
+                    Start workout
                   </FormSubmitButton>
                 </form>
                 <div className="grid grid-cols-2 gap-2">
@@ -87,8 +95,9 @@ export default async function TemplatesPage() {
                     />
                     <FormSubmitButton
                       pendingLabel="Duplicating..."
-                      className="min-h-11 w-full rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black disabled:cursor-wait disabled:opacity-70"
                     >
+                      <Copy aria-hidden="true" className="size-4" />
                       Duplicate
                     </FormSubmitButton>
                   </form>
@@ -100,8 +109,9 @@ export default async function TemplatesPage() {
                     />
                     <FormSubmitButton
                       pendingLabel="Deleting..."
-                      className="min-h-11 w-full rounded-md border border-red-500/40 px-3 text-sm font-semibold text-red-200 disabled:cursor-wait disabled:opacity-70"
+                      className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 disabled:cursor-wait disabled:opacity-70"
                     >
+                      <Trash2 aria-hidden="true" className="size-4" />
                       Delete
                     </FormSubmitButton>
                   </form>

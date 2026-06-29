@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FileUp, Play, Trophy } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { enrollProgram } from "@/app/(app)/programs/actions";
 import {
@@ -14,16 +15,21 @@ function formatValue(value: string | null | undefined) {
 
 function ProgramCard({ program }: { program: ProgramSummary }) {
   return (
-    <article className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+    <article className="app-card-flat p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-lg font-semibold">{program.name}</h2>
-          <p className="mt-1 text-sm capitalize text-[color:var(--muted)]">
-            {formatValue(program.difficulty)} - {program.day_count} day
-            {program.day_count === 1 ? "" : "s"}
-          </p>
+        <div className="flex min-w-0 gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+            <Trophy aria-hidden="true" className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-lg font-black">{program.name}</h2>
+            <p className="mt-1 text-sm capitalize text-[color:var(--muted)]">
+              {formatValue(program.difficulty)} - {program.day_count} day
+              {program.day_count === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
-        <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold">
+        <span className="app-chip">
           {program.is_public ? "Starter" : "Saved"}
         </span>
       </div>
@@ -58,7 +64,7 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
       <div className="mt-4 grid gap-2">
         <Link
           href={`/programs/${program.id}`}
-          className="flex min-h-11 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
+          className="flex min-h-11 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
         >
           Open
         </Link>
@@ -66,6 +72,7 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
           <form action={enrollProgram}>
             <input type="hidden" name="programId" value={program.id} />
             <FormSubmitButton pendingLabel="Starting...">
+              <Play aria-hidden="true" className="size-4 fill-current" />
               Use plan
             </FormSubmitButton>
           </form>
@@ -100,15 +107,16 @@ export default async function ProgramsPage() {
 
       <Link
         href="/import/programs"
-        className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
+        className="app-card-flat flex min-h-12 items-center justify-center gap-2 px-4 text-sm font-black"
       >
+        <FileUp aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
         Import plan CSV
       </Link>
 
       {activeEnrollment ? (
         <Link
           href="/programs/active"
-          className="block rounded-md border border-[color:var(--accent)] bg-[color:var(--panel)] p-4"
+          className="app-card block border-[color:var(--accent)] p-4"
         >
           <p className="text-sm font-medium text-[color:var(--accent)]">
             Current plan
@@ -127,7 +135,7 @@ export default async function ProgramsPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Your plans</h2>
         {ownPrograms.length === 0 ? (
-          <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+          <div className="app-card-flat p-4">
             <h3 className="text-base font-semibold">No saved plans yet</h3>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
               Open a starter plan and save it.

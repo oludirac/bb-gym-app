@@ -1,0 +1,55 @@
+"use client";
+
+import Link from "next/link";
+import { Dumbbell, Flame, LibraryBig, MoreHorizontal, Trophy } from "lucide-react";
+import { usePathname } from "next/navigation";
+
+const navItems = [
+  { href: "/dashboard", icon: Flame, label: "Today" },
+  { href: "/workouts/active", icon: Dumbbell, label: "Workout" },
+  { href: "/exercises", icon: LibraryBig, label: "Exercises" },
+  { href: "/programs", icon: Trophy, label: "Plans" },
+  { href: "/more", icon: MoreHorizontal, label: "More" }
+];
+
+function isActive(pathname: string, href: string) {
+  if (href === "/dashboard") {
+    return pathname === "/dashboard";
+  }
+
+  if (href === "/more") {
+    return pathname === "/more";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+export function BottomNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[color:var(--panel-border)] bg-[#080a0d]/92 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur-xl">
+      <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        {navItems.map((item) => {
+          const active = isActive(pathname, item.href);
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[11px] font-bold transition ${
+                active
+                  ? "bg-[color:var(--accent)] text-zinc-950"
+                  : "text-[color:var(--muted)] active:bg-[color:var(--panel)]"
+              }`}
+            >
+              <Icon aria-hidden="true" className="size-5" strokeWidth={2.4} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

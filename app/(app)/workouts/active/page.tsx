@@ -1,4 +1,14 @@
 import Link from "next/link";
+import {
+  Check,
+  Dumbbell,
+  Flag,
+  History,
+  Plus,
+  Repeat2,
+  Trash2,
+  X
+} from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   addExerciseToWorkout,
@@ -30,33 +40,42 @@ function formatDate(value: string) {
 
 function SetEditor({ set }: { set: WorkoutSet }) {
   return (
-    <div className="rounded-md border border-[color:var(--panel-border)] bg-zinc-950 p-3">
-      <form action={saveWorkoutSet}>
+    <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+      <form action={saveWorkoutSet} className="space-y-3">
         <input type="hidden" name="setId" value={set.id} />
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-          <p className="text-sm font-semibold">Set {set.sort_order}</p>
-          <select
-            name="setType"
-            defaultValue={set.set_type}
-            className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm capitalize"
-          >
-            {setTypes.map((setType) => (
-              <option key={setType} value={setType}>
-                {setType}
-              </option>
-            ))}
-          </select>
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-black">Set {set.sort_order}</p>
           <FormSubmitButton
             pendingLabel="Saving..."
-            className="min-h-10 rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950 disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg bg-[color:var(--success)] px-3 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
+            <Check aria-hidden="true" className="size-4" strokeWidth={3} />
             Save
           </FormSubmitButton>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <fieldset className="grid grid-cols-4 gap-1.5">
+          <legend className="sr-only">Set type</legend>
+          {setTypes.map((setType) => (
+            <label key={setType} className="relative">
+              <input
+                type="radio"
+                name="setType"
+                value={setType}
+                defaultChecked={set.set_type === setType}
+                className="peer sr-only"
+              />
+              <span className="flex min-h-9 items-center justify-center rounded-lg border border-[color:var(--panel-border)] px-2 text-[11px] font-black capitalize text-[color:var(--muted)] peer-checked:border-[color:var(--accent)] peer-checked:bg-[color:var(--accent)] peer-checked:text-zinc-950">
+                {setType === "working" ? "work" : setType}
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <div className="grid grid-cols-5 gap-2">
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold text-[color:var(--muted)]">
+            <span className="text-[11px] font-black text-[color:var(--muted)]">
               kg
             </span>
             <input
@@ -66,12 +85,12 @@ function SetEditor({ set }: { set: WorkoutSet }) {
               step="0.5"
               min="0"
               defaultValue={set.weight_kg ?? ""}
-              className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+              className="field-base min-h-12 px-2 text-center text-base font-black"
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold text-[color:var(--muted)]">
-              Reps
+            <span className="text-[11px] font-black text-[color:var(--muted)]">
+              reps
             </span>
             <input
               name="reps"
@@ -79,11 +98,11 @@ function SetEditor({ set }: { set: WorkoutSet }) {
               inputMode="numeric"
               min="0"
               defaultValue={set.reps ?? ""}
-              className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+              className="field-base min-h-12 px-2 text-center text-base font-black"
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold text-[color:var(--muted)]">
+            <span className="text-[11px] font-black text-[color:var(--muted)]">
               RPE
             </span>
             <input
@@ -94,11 +113,11 @@ function SetEditor({ set }: { set: WorkoutSet }) {
               min="0"
               max="10"
               defaultValue={set.rpe ?? ""}
-              className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+              className="field-base min-h-12 px-2 text-center text-base font-black"
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold text-[color:var(--muted)]">
+            <span className="text-[11px] font-black text-[color:var(--muted)]">
               RIR
             </span>
             <input
@@ -108,12 +127,12 @@ function SetEditor({ set }: { set: WorkoutSet }) {
               step="0.5"
               min="0"
               defaultValue={set.rir ?? ""}
-              className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+              className="field-base min-h-12 px-2 text-center text-base font-black"
             />
           </label>
           <label className="grid gap-1">
-            <span className="text-[11px] font-semibold text-[color:var(--muted)]">
-              Rest
+            <span className="text-[11px] font-black text-[color:var(--muted)]">
+              rest
             </span>
             <input
               name="restSeconds"
@@ -122,7 +141,7 @@ function SetEditor({ set }: { set: WorkoutSet }) {
               step="5"
               min="0"
               defaultValue={set.rest_seconds ?? ""}
-              className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+              className="field-base min-h-12 px-2 text-center text-base font-black"
             />
           </label>
         </div>
@@ -130,17 +149,19 @@ function SetEditor({ set }: { set: WorkoutSet }) {
         <input
           name="notes"
           defaultValue={set.notes ?? ""}
-          placeholder="Set notes"
-          className="mt-2 min-h-10 w-full rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
+          placeholder="Notes"
+          className="field-base w-full text-sm"
         />
       </form>
+
       <form action={deleteWorkoutSet} className="mt-2">
         <input type="hidden" name="setId" value={set.id} />
         <FormSubmitButton
           pendingLabel="Deleting..."
-          className="min-h-9 rounded-md border border-red-500/40 px-3 text-xs font-semibold text-red-200 disabled:cursor-wait disabled:opacity-70"
+          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-[color:var(--danger)]/40 px-3 text-xs font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
         >
-          Delete set
+          <Trash2 aria-hidden="true" className="size-3.5" />
+          Delete
         </FormSubmitButton>
       </form>
     </div>
@@ -151,13 +172,13 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
   const lastSet = exercise.sets.at(-1);
 
   return (
-    <article className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">
+    <article className="app-card-flat overflow-hidden">
+      <div className="flex items-start justify-between gap-3 border-b border-[color:var(--panel-border)] p-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-black">
             {exercise.exercise_name_snapshot}
           </h2>
-          <p className="text-sm text-[color:var(--muted)]">
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
             {exercise.sets.length} set{exercise.sets.length === 1 ? "" : "s"}
           </p>
         </div>
@@ -169,20 +190,20 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
           />
           <FormSubmitButton
             pendingLabel="Removing..."
-            className="min-h-10 rounded-md border border-red-500/40 px-3 text-sm font-semibold text-red-200 disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
-            Remove
+            <X aria-hidden="true" className="size-4" />
           </FormSubmitButton>
         </form>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="space-y-3 p-3">
         {exercise.sets.map((set) => (
           <SetEditor key={set.id} set={set} />
         ))}
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 border-t border-[color:var(--panel-border)] p-3">
         <form action={addWorkoutSet}>
           <input
             type="hidden"
@@ -191,8 +212,9 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
           />
           <FormSubmitButton
             pendingLabel="Adding..."
-            className="min-h-11 w-full rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950 disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
+            <Plus aria-hidden="true" className="size-4" />
             Add set
           </FormSubmitButton>
         </form>
@@ -206,9 +228,10 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
           <input type="hidden" name="copySetId" value={lastSet?.id ?? ""} />
           <FormSubmitButton
             pendingLabel="Repeating..."
-            className="min-h-11 w-full rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
-            Repeat last
+            <Repeat2 aria-hidden="true" className="size-4" />
+            Repeat
           </FormSubmitButton>
         </form>
       </div>
@@ -226,28 +249,29 @@ export default async function ActiveWorkoutPage() {
   if (!activeWorkout) {
     return (
       <div className="space-y-6">
-        <header className="space-y-2">
-          <p className="text-sm font-medium text-[color:var(--accent)]">
-            Workout
-          </p>
-          <h1 className="text-3xl font-semibold tracking-normal">
+        <section className="app-card p-5">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-[color:var(--accent)] text-zinc-950">
+            <Dumbbell aria-hidden="true" className="size-7" strokeWidth={2.6} />
+          </div>
+          <h1 className="mt-5 text-4xl font-black tracking-normal">
             No workout running
           </h1>
-          <p className="text-sm leading-6 text-[color:var(--muted)]">
+          <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
             Start from scratch and add lifts as you go.
           </p>
-        </header>
-
-        <form action={startBlankWorkout}>
-          <FormSubmitButton pendingLabel="Starting...">
-            Start workout
-          </FormSubmitButton>
-        </form>
+          <form action={startBlankWorkout} className="mt-5">
+            <FormSubmitButton pendingLabel="Starting...">
+              <Plus aria-hidden="true" className="size-5" />
+              Start workout
+            </FormSubmitButton>
+          </form>
+        </section>
 
         <Link
           href="/workouts"
-          className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
+          className="app-card-flat flex min-h-12 items-center justify-center gap-2 px-4 text-sm font-black"
         >
+          <History aria-hidden="true" className="size-4" />
           History
         </Link>
       </div>
@@ -255,47 +279,49 @@ export default async function ActiveWorkoutPage() {
   }
 
   return (
-    <div className="space-y-6 pb-20">
-      <header className="space-y-2">
-        <p className="text-sm font-medium text-[color:var(--accent)]">
-        Workout
+    <div className="space-y-5 pb-32">
+      <header className="app-card p-5">
+        <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
+          Workout
         </p>
-        <h1 className="text-3xl font-semibold tracking-normal">
+        <h1 className="mt-4 text-3xl font-black tracking-normal">
           {activeWorkout.name ?? "Workout"}
         </h1>
-        <p className="text-sm leading-6 text-[color:var(--muted)]">
+        <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
           Started {formatDate(activeWorkout.started_at)}
         </p>
       </header>
 
-      <form action={addExerciseToWorkout} className="space-y-2">
+      <form action={addExerciseToWorkout} className="app-card-flat p-3">
         <input type="hidden" name="workoutId" value={activeWorkout.id} />
-        <label className="grid gap-2">
-          <span className="text-sm font-medium">Add lift</span>
-          <select
-            name="exerciseId"
-            className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base"
-            required
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <label className="grid gap-1">
+            <span className="sr-only">Add lift</span>
+            <select name="exerciseId" className="field-base text-base" required>
+              {exerciseOptions.map((exercise) => (
+                <option key={exercise.id} value={exercise.id}>
+                  {exercise.name}
+                  {exercise.is_builtin ? "" : " (custom)"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <FormSubmitButton
+            pendingLabel="Adding..."
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
-            {exerciseOptions.map((exercise) => (
-              <option key={exercise.id} value={exercise.id}>
-                {exercise.name}
-                {exercise.is_builtin ? "" : " (custom)"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <FormSubmitButton pendingLabel="Adding exercise...">
-          Add lift
-        </FormSubmitButton>
+            <Plus aria-hidden="true" className="size-4" />
+            Add
+          </FormSubmitButton>
+        </div>
       </form>
 
-      <section className="space-y-3">
+      <section className="space-y-4">
         {activeWorkout.workoutExercises.length === 0 ? (
-          <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
-            <h2 className="text-base font-semibold">No exercises yet</h2>
+          <div className="app-card-flat p-4">
+            <h2 className="text-base font-black">No lifts yet</h2>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-              Add the first lift above.
+              Pick the first lift above.
             </p>
           </div>
         ) : (
@@ -305,19 +331,20 @@ export default async function ActiveWorkoutPage() {
         )}
       </section>
 
-      <div className="fixed inset-x-0 bottom-[4.75rem] z-10 px-4">
-        <div className="mx-auto grid max-w-md grid-cols-[1fr_auto] gap-2 rounded-md border border-[color:var(--panel-border)] bg-zinc-950/95 p-2 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-[5.75rem] z-20 px-4">
+        <div className="mx-auto grid max-w-md grid-cols-[1fr_auto] gap-2 rounded-2xl border border-[color:var(--panel-border)] bg-[#080a0d]/95 p-2 shadow-[0_16px_42px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <form action={finishWorkout}>
             <input type="hidden" name="workoutId" value={activeWorkout.id} />
             <FormSubmitButton pendingLabel="Finishing...">
-              Finish Workout
+              <Flag aria-hidden="true" className="size-5" />
+              Finish
             </FormSubmitButton>
           </form>
           <Link
             href="/workouts"
-            className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
+            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black"
           >
-            History
+            <History aria-hidden="true" className="size-5" />
           </Link>
         </div>
       </div>

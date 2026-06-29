@@ -2,12 +2,18 @@
 
 :root {
   color-scheme: dark;
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --muted: #a1a1aa;
-  --panel: #18181b;
-  --panel-border: #27272a;
-  --accent: #22c55e;
+  --background: #080a0d;
+  --foreground: #f6f1e8;
+  --muted: #a7adb7;
+  --panel: #141820;
+  --panel-raised: #1b222c;
+  --panel-border: #2a3340;
+  --accent: #f59e0b;
+  --accent-strong: #fbbf24;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --info: #38bdf8;
+  --shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -22,9 +28,14 @@ html {
 body {
   min-height: 100%;
   margin: 0;
-  background: var(--background);
+  background:
+    radial-gradient(circle at 50% -12%, rgba(245, 158, 11, 0.14), transparent 36rem),
+    linear-gradient(180deg, #0b0e13 0%, var(--background) 26rem);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -34,8 +45,76 @@ textarea {
   font: inherit;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: color-mix(in srgb, var(--muted), transparent 18%);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 .safe-area-shell {
   min-height: 100svh;
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.app-card {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+  box-shadow: var(--shadow);
+}
+
+.app-card-flat {
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.app-chip {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.field-base {
+  min-height: 3rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  background: #0d1117;
+  padding: 0 0.75rem;
+  color: var(--foreground);
+}
+
+.field-base:focus {
+  border-color: var(--accent);
 }

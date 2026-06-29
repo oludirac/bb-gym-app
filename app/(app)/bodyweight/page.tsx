@@ -1,4 +1,5 @@
 import { FormSubmitButton } from "@/components/form-submit-button";
+import { Scale, Trash2 } from "lucide-react";
 import {
   deleteBodyweightLog,
   saveBodyweightLog
@@ -35,7 +36,7 @@ export default async function BodyweightPage() {
         <p className="text-sm font-medium text-[color:var(--accent)]">
           Weight
         </p>
-        <h1 className="text-3xl font-semibold tracking-normal">
+        <h1 className="text-3xl font-black tracking-normal">
           Weigh-ins
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
@@ -45,9 +46,14 @@ export default async function BodyweightPage() {
 
       <form
         action={saveBodyweightLog}
-        className="space-y-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4"
+        className="app-card space-y-3 p-4"
       >
-        <h2 className="text-base font-semibold">Add weigh-in</h2>
+        <div className="flex items-center gap-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+            <Scale aria-hidden="true" className="size-5" />
+          </div>
+          <h2 className="text-base font-black">Add weigh-in</h2>
+        </div>
         <div className="grid grid-cols-[1fr_1fr] gap-2">
           <label className="grid gap-2">
             <span className="text-sm font-medium">Date</span>
@@ -55,7 +61,7 @@ export default async function BodyweightPage() {
               name="loggedOn"
               type="date"
               defaultValue={todayDate()}
-              className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base"
+              className="field-base text-base"
             />
           </label>
           <label className="grid gap-2">
@@ -72,20 +78,20 @@ export default async function BodyweightPage() {
                     10
                   : ""
               }
-              className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base"
+              className="field-base text-base"
             />
           </label>
         </div>
         <input
           name="notes"
           placeholder="Notes"
-          className="min-h-12 w-full rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base"
+          className="field-base w-full text-base"
         />
         <FormSubmitButton pendingLabel="Saving...">Save weight</FormSubmitButton>
       </form>
 
       {chartLogs.length > 1 ? (
-        <section className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+        <section className="app-card-flat p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-base font-semibold">Recent trend</h2>
             <p className="text-xs text-[color:var(--muted)]">
@@ -116,7 +122,7 @@ export default async function BodyweightPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Recent</h2>
         {logs.length === 0 ? (
-          <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+          <div className="app-card-flat p-4">
             <h3 className="text-base font-semibold">No weigh-ins yet</h3>
             <p className="mt-1 text-sm text-[color:var(--muted)]">
               Add one above.
@@ -127,7 +133,7 @@ export default async function BodyweightPage() {
             {logs.map((log) => (
               <article
                 key={log.id}
-                className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4"
+                className="app-card-flat p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -147,8 +153,9 @@ export default async function BodyweightPage() {
                     <input type="hidden" name="logId" value={log.id} />
                     <FormSubmitButton
                       pendingLabel="Deleting..."
-                      className="min-h-10 rounded-md border border-red-500/40 px-3 text-sm font-semibold text-red-200 disabled:cursor-wait disabled:opacity-70"
+                      className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 disabled:cursor-wait disabled:opacity-70"
                     >
+                      <Trash2 aria-hidden="true" className="size-4" />
                       Delete
                     </FormSubmitButton>
                   </form>

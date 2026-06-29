@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Mobile-first workout logging, programs, goals, and progress.",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#09090b",
-    theme_color: "#09090b",
+    background_color: "#080a0d",
+    theme_color: "#080a0d",
     orientation: "portrait",
     icons: [
       {

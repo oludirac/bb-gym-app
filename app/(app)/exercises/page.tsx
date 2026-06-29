@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Dumbbell, Plus, Search } from "lucide-react";
 import {
   getExerciseSummaries,
   getMuscleOptions,
@@ -46,7 +47,7 @@ function FilterSelect({
       <select
         name={name}
         defaultValue={value ?? ""}
-        className="min-h-11 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-sm capitalize outline-none focus:border-[color:var(--accent)]"
+        className="field-base text-sm capitalize"
       >
         {children}
       </select>
@@ -80,8 +81,9 @@ export default async function ExercisesPage({
           <h1 className="text-3xl font-semibold tracking-normal">Exercises</h1>
           <Link
             href="/exercises/new"
-            className="flex min-h-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--accent)] px-3 text-sm font-semibold text-zinc-950"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950"
           >
+            <Plus aria-hidden="true" className="size-4" />
             New
           </Link>
         </div>
@@ -95,12 +97,15 @@ export default async function ExercisesPage({
           <span className="text-xs font-semibold uppercase tracking-normal text-[color:var(--muted)]">
             Search
           </span>
-          <input
-            name="q"
-            defaultValue={filters.q ?? ""}
-            placeholder="Search exercises"
-            className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base outline-none focus:border-[color:var(--accent)]"
-          />
+          <div className="field-base flex items-center gap-2">
+            <Search aria-hidden="true" className="size-4 text-[color:var(--muted)]" />
+            <input
+              name="q"
+              defaultValue={filters.q ?? ""}
+              placeholder="Search exercises"
+              className="min-h-11 flex-1 bg-transparent text-base outline-none"
+            />
+          </div>
         </label>
 
         <div className="grid gap-3">
@@ -143,13 +148,13 @@ export default async function ExercisesPage({
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <button
             type="submit"
-            className="min-h-12 rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
+            className="min-h-12 rounded-xl bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950"
           >
             Apply
           </button>
           <Link
             href="/exercises"
-            className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
+            className="flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black"
           >
             Clear
           </Link>
@@ -167,7 +172,7 @@ export default async function ExercisesPage({
         </div>
 
         {exercises.length === 0 ? (
-          <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+          <div className="app-card-flat p-4">
             <h3 className="text-base font-semibold">No exercises found</h3>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
               Try a different search or remove a filter.
@@ -179,10 +184,14 @@ export default async function ExercisesPage({
               <Link
                 key={exercise.id}
                 href={`/exercises/${exercise.id}`}
-                className="block rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4"
+                className="app-card-flat block p-4 transition active:scale-[0.99] active:border-[color:var(--accent)]"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 space-y-1">
+                  <div className="flex min-w-0 gap-3">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+                      <Dumbbell aria-hidden="true" className="size-5" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
                     <h3 className="text-base font-semibold">
                       {exercise.name}
                     </h3>
@@ -190,13 +199,14 @@ export default async function ExercisesPage({
                       {formatValue(exercise.category)} -{" "}
                       {formatValue(exercise.difficulty)}
                     </p>
+                    </div>
                   </div>
                   <div className="grid shrink-0 justify-items-end gap-2">
-                    <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold capitalize text-zinc-300">
+                    <span className="app-chip capitalize">
                       {formatValue(exercise.movement_pattern)}
                     </span>
                     {!exercise.is_builtin ? (
-                      <span className="rounded-md bg-[color:var(--accent)] px-2 py-1 text-[11px] font-semibold text-zinc-950">
+                      <span className="app-chip border-[color:var(--accent)] bg-[color:var(--accent)] text-zinc-950">
                         Custom
                       </span>
                     ) : null}
@@ -224,7 +234,7 @@ export default async function ExercisesPage({
                         exercise.primaryMuscles.map((muscle) => (
                           <span
                             key={muscle.id}
-                            className="rounded-md bg-zinc-950 px-2 py-1 text-xs font-semibold"
+                            className="app-chip"
                           >
                             {muscle.name}
                           </span>

@@ -1,16 +1,6 @@
-import Link from "next/link";
-import { FormSubmitButton } from "@/components/form-submit-button";
-import { signOut } from "@/app/(auth)/actions";
+import { Dumbbell } from "lucide-react";
+import { BottomNav } from "@/components/bottom-nav";
 import { requireUser } from "@/lib/auth/session";
-
-const navItems = [
-  { href: "/dashboard", label: "Today" },
-  { href: "/exercises", label: "Exercises" },
-  { href: "/workouts/active", label: "Workout" },
-  { href: "/templates", label: "Routines" },
-  { href: "/programs", label: "Plans" },
-  { href: "/settings", label: "Settings" }
-];
 
 export default async function AppLayout({
   children
@@ -23,35 +13,21 @@ export default async function AppLayout({
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col">
       <header className="flex items-center justify-between gap-3 px-4 pt-4">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{displayName}</p>
-          <p className="text-xs text-[color:var(--muted)]">
-            {profile?.unit_preference ?? "kg"}
-          </p>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--accent)] text-zinc-950 shadow-[0_14px_30px_rgba(245,158,11,0.2)]">
+            <Dumbbell aria-hidden="true" className="size-5" strokeWidth={2.6} />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-extrabold">BB Gym</p>
+            <p className="truncate text-xs text-[color:var(--muted)]">
+              {displayName}
+            </p>
+          </div>
         </div>
-        <form action={signOut}>
-          <FormSubmitButton
-            pendingLabel="Logging out..."
-            className="min-h-10 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
-          >
-            Logout
-          </FormSubmitButton>
-        </form>
+        <span className="app-chip uppercase">{profile?.unit_preference ?? "kg"}</span>
       </header>
-      <div className="flex-1 px-4 pb-24 pt-5">{children}</div>
-      <nav className="fixed inset-x-0 bottom-0 border-t border-[color:var(--panel-border)] bg-zinc-950/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 backdrop-blur">
-        <div className="mx-auto grid max-w-md grid-cols-6 gap-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex min-h-12 items-center justify-center rounded-md px-2 text-center text-[11px] font-medium text-zinc-300"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </nav>
+      <div className="flex-1 px-4 pb-28 pt-6">{children}</div>
+      <BottomNav />
     </div>
   );
 }
