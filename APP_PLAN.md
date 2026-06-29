@@ -1,6 +1,6 @@
 # Gym Tracker PWA Technical Implementation Plan
 
-Status: Planning complete. Awaiting approval before implementation.
+Status: MVP implementation substantially complete as of 2026-06-29. The app now has auth/profile/settings, exercise browsing and custom exercise creation, active workout logging, templates, programs/enrollment, goals, bodyweight, progress, CSV import, JSON/CSV export, and PWA install metadata/instructions. Remaining polish should be driven by real iPhone testing.
 
 Currentness audit: checked against official docs on 2026-06-29. Implementation should use Supabase publishable/secret keys, `@supabase/ssr`, Next.js `proxy.ts` instead of the deprecated `middleware` convention, Tailwind CSS v4/PostCSS setup, and current Vercel environment handling.
 
