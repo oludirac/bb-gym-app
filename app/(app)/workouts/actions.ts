@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { getProgramDetail } from "@/lib/programs/queries";
 
 function fieldValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -33,6 +34,64 @@ async function nextSortOrder(
     .maybeSingle();
 
   return ((data as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
+}
+
+async function advanceProgramEnrollment(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  enrollmentId: string,
+  programDayId: string
+) {
+  const { data: enrollment } = await supabase
+    .from("program_enrollments")
+    .select("id, program_id")
+    .eq("id", enrollmentId)
+    .maybeSingle();
+
+  if (!enrollment?.program_id) {
+    return;
+  }
+
+  const program = await getProgramDetail(supabase, enrollment.program_id);
+
+  if (!program) {
+    return;
+  }
+
+  const orderedDays = program.weeks.flatMap((week) =>
+    week.days.map((day) => ({
+      dayId: day.id,
+      dayNumber: day.day_number,
+      weekNumber: week.week_number
+    }))
+  );
+  const currentIndex = orderedDays.findIndex(
+    (day) => day.dayId === programDayId
+  );
+  const nextDay = orderedDays[currentIndex + 1];
+
+  if (nextDay) {
+    await supabase
+      .from("program_enrollments")
+      .update({
+        current_day: nextDay.dayNumber,
+        current_week: nextDay.weekNumber
+      })
+      .eq("id", enrollmentId);
+    return;
+  }
+
+  await supabase
+    .from("program_enrollments")
+    .update({
+      completed_at: new Date().toISOString(),
+      status: "completed"
+    })
+    .eq("id", enrollmentId);
+
+  await supabase
+    .from("user_settings")
+    .update({ active_program_enrollment_id: null })
+    .eq("active_program_enrollment_id", enrollmentId);
 }
 
 export async function startBlankWorkout() {
@@ -202,6 +261,12 @@ export async function finishWorkout(formData: FormData) {
     redirect("/workouts/active");
   }
 
+  const { data: workoutMeta } = await supabase
+    .from("workouts")
+    .select("program_day_id, program_enrollment_id")
+    .eq("id", workoutId)
+    .maybeSingle();
+
   const { data: exercises } = await supabase
     .from("workout_exercises")
     .select("id, workout_sets(weight_kg, reps, completed_at)")
@@ -235,8 +300,18 @@ export async function finishWorkout(formData: FormData) {
     })
     .eq("id", workoutId);
 
+  if (workoutMeta?.program_enrollment_id && workoutMeta.program_day_id) {
+    await advanceProgramEnrollment(
+      supabase,
+      workoutMeta.program_enrollment_id,
+      workoutMeta.program_day_id
+    );
+  }
+
   revalidatePath("/workouts");
   revalidatePath("/workouts/active");
+  revalidatePath("/programs");
+  revalidatePath("/programs/active");
   redirect(`/workouts/${workoutId}`);
 }
 
