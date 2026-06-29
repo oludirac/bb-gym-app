@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="BB Gym Tracker icon">
+  <rect width="512" height="512" rx="96" fill="#09090b"/>
+  <path d="M104 232h48v48h-48v-48Zm256 0h48v48h-48v-48ZM168 208h176v96H168v-96Z" fill="#22c55e"/>
+  <path d="M208 176h96v160h-96V176Z" fill="#f4f4f5"/>
+  <path d="M228 216h56v80h-56v-80Z" fill="#09090b"/>
+</svg>
