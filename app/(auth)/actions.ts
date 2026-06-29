@@ -48,6 +48,14 @@ export async function signIn(formData: FormData) {
     redirectWithError("/login", error.message);
   }
 
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    await ensureUserRows(supabase, user);
+  }
+
   redirect("/dashboard");
 }
 

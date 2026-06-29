@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Pencil, Play } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { copyProgram, enrollProgram } from "@/app/(app)/programs/actions";
 import { getProgramDetail } from "@/lib/programs/queries";
+import { formatWeekdays } from "@/lib/scheduling/weekdays";
 import { requireUser } from "@/lib/auth/session";
 
 type ProgramDetailPageProps = {
@@ -46,6 +48,11 @@ export default async function ProgramDetailPage({
           <h1 className="text-3xl font-semibold tracking-normal">
             {program.name}
           </h1>
+          <p className="text-sm font-bold text-[color:var(--accent)]">
+            {program.schedule_type === "calendar"
+              ? "Fixed weekdays"
+              : "Next workout in order"}
+          </p>
           {program.description ? (
             <p className="text-sm leading-6 text-[color:var(--muted)]">
               {program.description}
@@ -113,6 +120,11 @@ export default async function ProgramDetailPage({
                       Day {day.day_number}
                       {day.focus ? ` - ${day.focus}` : ""}
                     </p>
+                    {program.schedule_type === "calendar" ? (
+                      <p className="mt-1 text-xs font-bold uppercase text-[color:var(--accent)]">
+                        {formatWeekdays(day.schedule_weekdays)}
+                      </p>
+                    ) : null}
                   </div>
                   <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold">
                     {day.exercises.length} lifts
@@ -168,16 +180,27 @@ export default async function ProgramDetailPage({
             <form action={enrollProgram}>
               <input type="hidden" name="programId" value={program.id} />
               <FormSubmitButton pendingLabel="Starting...">
+                <Play aria-hidden="true" className="size-4 fill-current" />
                 Use plan
               </FormSubmitButton>
             </form>
           )}
-          <Link
-            href="/programs"
-            className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
-          >
-            Plans
-          </Link>
+          {program.is_public ? (
+            <Link
+              href="/programs"
+              className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
+            >
+              Plans
+            </Link>
+          ) : (
+            <Link
+              href={`/programs/${program.id}/edit`}
+              className="flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-semibold"
+            >
+              <Pencil aria-hidden="true" className="size-4" />
+              Edit
+            </Link>
+          )}
         </div>
       </div>
     </div>

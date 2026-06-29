@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarDays, Play } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   completeProgramEnrollment,
@@ -8,19 +9,23 @@ import {
 import {
   getActiveProgramEnrollment,
   getProgramDetail,
+  type ProgramScheduleType,
   type ProgramDay
 } from "@/lib/programs/queries";
+import { formatWeekdays } from "@/lib/scheduling/weekdays";
 import { requireUser } from "@/lib/auth/session";
 
 function DayCard({
   day,
   enrollmentId,
   isCurrent,
+  scheduleType,
   weekNumber
 }: {
   day: ProgramDay;
   enrollmentId: string;
   isCurrent: boolean;
+  scheduleType: ProgramScheduleType;
   weekNumber: number;
 }) {
   return (
@@ -42,8 +47,14 @@ function DayCard({
               {day.focus}
             </p>
           ) : null}
+          {scheduleType === "calendar" ? (
+            <p className="mt-2 inline-flex min-h-7 items-center gap-1 rounded-lg border border-[color:var(--panel-border)] px-2 text-xs font-black text-[color:var(--accent)]">
+              <CalendarDays aria-hidden="true" className="size-3.5" />
+              {formatWeekdays(day.schedule_weekdays)}
+            </p>
+          ) : null}
         </div>
-        {isCurrent ? (
+        {scheduleType === "sequence" && isCurrent ? (
           <span className="rounded-md bg-[color:var(--accent)] px-2 py-1 text-[11px] font-semibold text-zinc-950">
             Current
           </span>
@@ -55,10 +66,11 @@ function DayCard({
           <input type="hidden" name="enrollmentId" value={enrollmentId} />
           <input type="hidden" name="programDayId" value={day.id} />
           <FormSubmitButton pendingLabel="Starting...">
+            <Play aria-hidden="true" className="size-4 fill-current" />
             Start workout
           </FormSubmitButton>
         </form>
-        {!isCurrent ? (
+        {scheduleType === "sequence" && !isCurrent ? (
           <form action={setActiveProgramDay}>
             <input type="hidden" name="enrollmentId" value={enrollmentId} />
             <input type="hidden" name="weekNumber" value={weekNumber} />
@@ -141,24 +153,32 @@ export default async function ActiveProgramPage() {
           {program.name}
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Week {enrollment.current_week}, day {enrollment.current_day}.{" "}
-          {enrollment.completed_workouts}/{enrollment.total_days} workouts done.
+          {program.schedule_type === "calendar"
+            ? "Fixed weekdays. Today decides what is due."
+            : `Week ${enrollment.current_week}, day ${enrollment.current_day}. Next workout advances when you finish.`}
         </p>
       </header>
 
       <section className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold">Done</h2>
+          <h2 className="text-base font-semibold">
+            {program.schedule_type === "calendar" ? "Logged" : "Done"}
+          </h2>
           <p className="text-sm font-semibold">
-            {enrollment.percent_complete}%
+            {enrollment.completed_workouts}
+            {program.schedule_type === "sequence"
+              ? `/${enrollment.total_days}`
+              : " workouts"}
           </p>
         </div>
-        <div className="mt-3 h-3 rounded-full bg-zinc-950">
-          <div
-            className="h-3 rounded-full bg-[color:var(--accent)]"
-            style={{ width: `${enrollment.percent_complete}%` }}
-          />
-        </div>
+        {program.schedule_type === "sequence" ? (
+          <div className="mt-3 h-3 rounded-full bg-zinc-950">
+            <div
+              className="h-3 rounded-full bg-[color:var(--accent)]"
+              style={{ width: `${enrollment.percent_complete}%` }}
+            />
+          </div>
+        ) : null}
       </section>
 
       <section className="space-y-4">
@@ -174,6 +194,7 @@ export default async function ActiveProgramPage() {
                   week.week_number === enrollment.current_week &&
                   day.day_number === enrollment.current_day
                 }
+                scheduleType={program.schedule_type}
                 weekNumber={week.week_number}
               />
             ))}

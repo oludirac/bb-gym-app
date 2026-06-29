@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileUp, Play, Trophy } from "lucide-react";
+import { FileUp, Pencil, Play, Plus, Trophy } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { enrollProgram } from "@/app/(app)/programs/actions";
 import {
@@ -33,6 +33,11 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
           {program.is_public ? "Starter" : "Saved"}
         </span>
       </div>
+      <p className="mt-3 text-sm font-bold capitalize text-[color:var(--accent)]">
+        {program.schedule_type === "calendar"
+          ? "Fixed weekdays"
+          : "Next workout in order"}
+      </p>
 
       {program.description ? (
         <p className="mt-3 text-sm leading-6 text-[color:var(--muted)]">
@@ -62,12 +67,25 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
       </dl>
 
       <div className="mt-4 grid gap-2">
-        <Link
-          href={`/programs/${program.id}`}
-          className="flex min-h-11 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
-        >
-          Open
-        </Link>
+        <div className="grid grid-cols-2 gap-2">
+          <Link
+            href={`/programs/${program.id}`}
+            className="flex min-h-11 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
+          >
+            Open
+          </Link>
+          {!program.is_public ? (
+            <Link
+              href={`/programs/${program.id}/edit`}
+              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
+            >
+              <Pencil aria-hidden="true" className="size-4" />
+              Edit
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
         {!program.is_public ? (
           <form action={enrollProgram}>
             <input type="hidden" name="programId" value={program.id} />
@@ -105,13 +123,22 @@ export default async function ProgramsPage() {
         </p>
       </header>
 
-      <Link
-        href="/import/programs"
-        className="app-card-flat flex min-h-12 items-center justify-center gap-2 px-4 text-sm font-black"
-      >
-        <FileUp aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
-        Import plan CSV
-      </Link>
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          href="/programs/new"
+          className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950"
+        >
+          <Plus aria-hidden="true" className="size-4" />
+          New plan
+        </Link>
+        <Link
+          href="/import/programs"
+          className="app-card-flat flex min-h-12 items-center justify-center gap-2 px-4 text-sm font-black"
+        >
+          <FileUp aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
+          Import CSV
+        </Link>
+      </div>
 
       {activeEnrollment ? (
         <Link

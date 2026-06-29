@@ -26,6 +26,7 @@ export type Workout = {
   finished_at: string | null;
   id: string;
   name: string | null;
+  scheduled_for: string | null;
   started_at: string;
   status: string;
   total_volume_kg: number;
@@ -53,6 +54,7 @@ type RawWorkout = {
   finished_at: string | null;
   id: string;
   name: string | null;
+  scheduled_for: string | null;
   started_at: string;
   status: string;
   total_volume_kg: number;
@@ -63,6 +65,7 @@ const workoutSelect = `
   id,
   name,
   status,
+  scheduled_for,
   started_at,
   finished_at,
   total_volume_kg,
@@ -96,6 +99,7 @@ function mapWorkout(raw: RawWorkout): Workout {
     finished_at: raw.finished_at,
     id: raw.id,
     name: raw.name,
+    scheduled_for: raw.scheduled_for,
     started_at: raw.started_at,
     status: raw.status,
     total_volume_kg: Number(raw.total_volume_kg ?? 0),
@@ -167,7 +171,7 @@ export async function getExerciseOptions(supabase: SupabaseClient) {
 export async function getCompletedWorkouts(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, name, started_at, finished_at, total_volume_kg")
+    .select("id, name, scheduled_for, started_at, finished_at, total_volume_kg")
     .eq("status", "completed")
     .order("started_at", { ascending: false })
     .limit(30);
@@ -180,6 +184,7 @@ export async function getCompletedWorkouts(supabase: SupabaseClient) {
     finished_at: string | null;
     id: string;
     name: string | null;
+    scheduled_for: string | null;
     started_at: string;
     total_volume_kg: number;
   }[];

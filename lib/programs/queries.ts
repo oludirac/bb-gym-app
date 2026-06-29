@@ -1,5 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+export type ProgramScheduleType = "calendar" | "sequence";
+
+export type ProgramDaySchedule = {
+  id: string;
+  program_day_id: string;
+  weekday: number;
+};
+
 export type ProgramSet = {
   id: string;
   notes: string | null;
@@ -29,6 +37,7 @@ export type ProgramDay = {
   id: string;
   name: string;
   notes: string | null;
+  schedule_weekdays: number[];
 };
 
 export type ProgramWeek = {
@@ -49,6 +58,7 @@ export type ProgramDetail = {
   is_public: boolean;
   name: string;
   owner_id: string | null;
+  schedule_type: ProgramScheduleType;
   weeks: ProgramWeek[];
 };
 
@@ -64,6 +74,7 @@ export type ProgramSummary = {
   is_public: boolean;
   name: string;
   owner_id: string | null;
+  schedule_type: ProgramScheduleType;
 };
 
 export type ActiveProgramEnrollment = {
@@ -74,9 +85,27 @@ export type ActiveProgramEnrollment = {
   percent_complete: number;
   program_id: string;
   program_name: string;
+  schedule_type: ProgramScheduleType;
   started_on: string;
   status: string;
   total_days: number;
+};
+
+export type TodayPlanOverview = {
+  completed_today: boolean;
+  enrollment_id: string;
+  missed: {
+    day: ProgramDay;
+    scheduled_for: string;
+    week_number: number;
+  } | null;
+  program_day: ProgramDay | null;
+  program_id: string;
+  program_name: string;
+  scheduled_for: string;
+  schedule_type: ProgramScheduleType;
+  status: "done" | "due" | "missed" | "rest" | "sequence";
+  week_number: number | null;
 };
 
 type RawActiveProgramEnrollment = {
@@ -87,9 +116,11 @@ type RawActiveProgramEnrollment = {
   programs:
     | {
         name: string;
+        schedule_type: ProgramScheduleType;
       }
     | {
         name: string;
+        schedule_type: ProgramScheduleType;
       }[]
     | null;
   started_on: string;
@@ -98,6 +129,12 @@ type RawActiveProgramEnrollment = {
 
 type RawProgramCategory = {
   category: string;
+};
+
+type RawProgramDaySchedule = {
+  id: string;
+  program_day_id: string;
+  weekday: number;
 };
 
 type RawProgramSet = ProgramSet;
@@ -145,7 +182,9 @@ type RawProgram = {
   name: string;
   owner_id: string | null;
   program_categories?: RawProgramCategory[] | null;
+  program_day_schedules?: RawProgramDaySchedule[] | null;
   program_weeks?: RawProgramWeek[] | null;
+  schedule_type: ProgramScheduleType | null;
 };
 
 const programDetailSelect = `
@@ -158,8 +197,14 @@ const programDetailSelect = `
   days_per_week,
   avg_session_minutes,
   equipment_required,
+  schedule_type,
   program_categories (
     category
+  ),
+  program_day_schedules (
+    id,
+    program_day_id,
+    weekday
   ),
   program_weeks (
     id,
@@ -222,6 +267,15 @@ function mapProgramSet(set: RawProgramSet): ProgramSet {
 }
 
 function mapProgram(raw: RawProgram): ProgramDetail {
+  const scheduleMap = new Map<string, number[]>();
+
+  for (const schedule of raw.program_day_schedules ?? []) {
+    scheduleMap.set(schedule.program_day_id, [
+      ...(scheduleMap.get(schedule.program_day_id) ?? []),
+      schedule.weekday
+    ]);
+  }
+
   return {
     avg_session_minutes: raw.avg_session_minutes,
     categories: (raw.program_categories ?? []).map((item) => item.category),
@@ -233,6 +287,7 @@ function mapProgram(raw: RawProgram): ProgramDetail {
     is_public: raw.is_public,
     name: raw.name,
     owner_id: raw.owner_id,
+    schedule_type: raw.schedule_type ?? "sequence",
     weeks: sortByOrder(raw.program_weeks ?? [], "week_number").map((week) => ({
       days: sortByOrder(week.program_days ?? [], "day_number").map((day) => ({
         day_number: day.day_number,
@@ -252,7 +307,10 @@ function mapProgram(raw: RawProgram): ProgramDetail {
         focus: day.focus,
         id: day.id,
         name: day.name,
-        notes: day.notes
+        notes: day.notes,
+        schedule_weekdays: (scheduleMap.get(day.id) ?? []).sort(
+          (a, b) => a - b
+        )
       })),
       id: week.id,
       notes: week.notes,
@@ -276,6 +334,7 @@ export async function getProgramSummaries(supabase: SupabaseClient) {
         avg_session_minutes,
         equipment_required,
         program_categories (category),
+        schedule_type,
         program_weeks (
           id,
           program_days (id)
@@ -303,7 +362,8 @@ export async function getProgramSummaries(supabase: SupabaseClient) {
     id: program.id,
     is_public: program.is_public,
     name: program.name,
-    owner_id: program.owner_id
+    owner_id: program.owner_id,
+    schedule_type: program.schedule_type ?? "sequence"
   })) satisfies ProgramSummary[];
 }
 
@@ -336,7 +396,8 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
         current_week,
         current_day,
         programs (
-          name
+          name,
+          schedule_type
         )
       `
     )
@@ -357,6 +418,9 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
   const programName = Array.isArray(enrollment.programs)
     ? enrollment.programs[0]?.name
     : enrollment.programs?.name;
+  const scheduleType = Array.isArray(enrollment.programs)
+    ? enrollment.programs[0]?.schedule_type
+    : enrollment.programs?.schedule_type;
 
   const [program, completedWorkoutsResult] = await Promise.all([
     getProgramDetail(supabase, enrollment.program_id),
@@ -380,8 +444,191 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
       totalDays > 0 ? Math.min(100, Math.round((completedWorkouts / totalDays) * 100)) : 0,
     program_id: enrollment.program_id,
     program_name: programName ?? "Program",
+    schedule_type: scheduleType ?? "sequence",
     started_on: enrollment.started_on,
     status: enrollment.status,
     total_days: totalDays
   } satisfies ActiveProgramEnrollment;
+}
+
+function todayIsoDate() {
+  return new Intl.DateTimeFormat("en-CA").format(new Date());
+}
+
+function weekdayNumber(date = new Date()) {
+  const day = date.getDay();
+  return day === 0 ? 7 : day;
+}
+
+function previousDateForWeekday(targetWeekday: number, from = new Date()) {
+  const currentWeekday = weekdayNumber(from);
+  const diff = (currentWeekday - targetWeekday + 7) % 7;
+
+  if (diff === 0) {
+    return null;
+  }
+
+  const previous = new Date(from);
+  previous.setDate(previous.getDate() - diff);
+  return new Intl.DateTimeFormat("en-CA").format(previous);
+}
+
+function orderedProgramDays(program: ProgramDetail) {
+  return program.weeks.flatMap((week) =>
+    week.days.map((day) => ({
+      day,
+      weekNumber: week.week_number
+    }))
+  );
+}
+
+export async function getTodayPlanOverview(supabase: SupabaseClient) {
+  const { data, error } = await supabase
+    .from("program_enrollments")
+    .select(
+      `
+        id,
+        program_id,
+        started_on,
+        status,
+        current_week,
+        current_day,
+        programs (
+          name,
+          schedule_type
+        )
+      `
+    )
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const enrollment = data as RawActiveProgramEnrollment;
+  const program = await getProgramDetail(supabase, enrollment.program_id);
+
+  if (!program) {
+    return null;
+  }
+
+  const today = new Date();
+  const todayIso = todayIsoDate();
+  const todayWeekday = weekdayNumber(today);
+  const orderedDays = orderedProgramDays(program);
+  const completedTodayResult = await supabase
+    .from("workouts")
+    .select("id", { count: "exact", head: true })
+    .eq("program_enrollment_id", enrollment.id)
+    .eq("status", "completed")
+    .eq("scheduled_for", todayIso);
+  const completedToday = (completedTodayResult.count ?? 0) > 0;
+
+  if (program.schedule_type === "calendar") {
+    const todayMatch =
+      orderedDays.find(({ day }) =>
+        day.schedule_weekdays.includes(todayWeekday)
+      ) ?? null;
+    const previousMatches = orderedDays
+      .flatMap(({ day, weekNumber }) =>
+        day.schedule_weekdays.map((weekday) => ({
+          day,
+          scheduled_for: previousDateForWeekday(weekday, today),
+          weekday,
+          weekNumber
+        }))
+      )
+      .filter(
+        (
+          item
+        ): item is {
+          day: ProgramDay;
+          scheduled_for: string;
+          weekday: number;
+          weekNumber: number;
+        } => Boolean(item.scheduled_for)
+      )
+      .filter((item) => item.scheduled_for >= enrollment.started_on)
+      .sort((a, b) => b.scheduled_for.localeCompare(a.scheduled_for));
+    let missed: TodayPlanOverview["missed"] = null;
+    let completedMissedKeys = new Set<string>();
+
+    if (previousMatches.length > 0) {
+      const { data: completedRows } = await supabase
+        .from("workouts")
+        .select("program_day_id, scheduled_for")
+        .eq("program_enrollment_id", enrollment.id)
+        .eq("status", "completed")
+        .in(
+          "scheduled_for",
+          previousMatches.map((item) => item.scheduled_for)
+        );
+
+      completedMissedKeys = new Set(
+        ((completedRows ?? []) as {
+          program_day_id: string | null;
+          scheduled_for: string | null;
+        }[])
+          .filter((row) => row.program_day_id && row.scheduled_for)
+          .map((row) => `${row.program_day_id}:${row.scheduled_for}`)
+      );
+    }
+
+    for (const item of previousMatches) {
+      if (!completedMissedKeys.has(`${item.day.id}:${item.scheduled_for}`)) {
+        missed = {
+          day: item.day,
+          scheduled_for: item.scheduled_for,
+          week_number: item.weekNumber
+        };
+        break;
+      }
+    }
+
+    return {
+      completed_today: completedToday,
+      enrollment_id: enrollment.id,
+      missed,
+      program_day: todayMatch?.day ?? null,
+      program_id: program.id,
+      program_name: program.name,
+      scheduled_for: todayIso,
+      schedule_type: program.schedule_type,
+      status: todayMatch
+        ? completedToday
+          ? "done"
+          : "due"
+        : missed
+          ? "missed"
+          : "rest",
+      week_number: todayMatch?.weekNumber ?? null
+    } satisfies TodayPlanOverview;
+  }
+
+  const current =
+    orderedDays.find(
+      ({ day, weekNumber }) =>
+        weekNumber === enrollment.current_week &&
+        day.day_number === enrollment.current_day
+    ) ?? orderedDays[0] ?? null;
+
+  return {
+    completed_today: completedToday,
+    enrollment_id: enrollment.id,
+    missed: null,
+    program_day: current?.day ?? null,
+    program_id: program.id,
+    program_name: program.name,
+    scheduled_for: todayIso,
+    schedule_type: program.schedule_type,
+    status: "sequence",
+    week_number: current?.weekNumber ?? null
+  } satisfies TodayPlanOverview;
 }

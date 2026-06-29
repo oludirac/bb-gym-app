@@ -67,6 +67,11 @@ async function advanceProgramEnrollment(
   const currentIndex = orderedDays.findIndex(
     (day) => day.dayId === programDayId
   );
+
+  if (program.schedule_type === "calendar") {
+    return;
+  }
+
   const nextDay = orderedDays[currentIndex + 1];
 
   if (nextDay) {
@@ -75,6 +80,19 @@ async function advanceProgramEnrollment(
       .update({
         current_day: nextDay.dayNumber,
         current_week: nextDay.weekNumber
+      })
+      .eq("id", enrollmentId);
+    return;
+  }
+
+  const firstDay = orderedDays[0];
+
+  if (firstDay) {
+    await supabase
+      .from("program_enrollments")
+      .update({
+        current_day: firstDay.dayNumber,
+        current_week: firstDay.weekNumber
       })
       .eq("id", enrollmentId);
     return;
@@ -100,6 +118,7 @@ export async function startBlankWorkout() {
     .from("workouts")
     .select("id")
     .eq("status", "active")
+    .eq("owner_id", user.id)
     .maybeSingle();
 
   if (existing?.id) {
@@ -310,6 +329,7 @@ export async function finishWorkout(formData: FormData) {
 
   revalidatePath("/workouts");
   revalidatePath("/workouts/active");
+  revalidatePath("/dashboard");
   revalidatePath("/programs");
   revalidatePath("/programs/active");
   redirect(`/workouts/${workoutId}`);

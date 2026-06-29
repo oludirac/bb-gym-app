@@ -1,6 +1,6 @@
 import Link from "next/link";
 import {
-  BarChart3,
+  CalendarDays,
   Dumbbell,
   Flame,
   LibraryBig,
@@ -10,23 +10,18 @@ import {
 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { startBlankWorkout } from "@/app/(app)/workouts/actions";
-import { getBodyweightLogs } from "@/lib/tracking/queries";
-import { getActiveProgramEnrollment } from "@/lib/programs/queries";
-import { getProgressSummary } from "@/lib/progress/queries";
+import { startWorkoutFromProgramDay } from "@/app/(app)/programs/actions";
+import { getTodayPlanOverview } from "@/lib/programs/queries";
 import { getActiveWorkout } from "@/lib/workouts/queries";
 import { requireUser } from "@/lib/auth/session";
-import { formatWeight } from "@/lib/unit-conversion";
+import { weekdayLabel } from "@/lib/scheduling/weekdays";
 
 const quickActions = [
   { href: "/workouts/active", icon: Dumbbell, label: "Workout", meta: "Log now" },
   { href: "/exercises", icon: LibraryBig, label: "Exercises", meta: "Find lifts" },
   { href: "/templates", icon: TimerReset, label: "Routines", meta: "Saved days" },
-  { href: "/programs", icon: Trophy, label: "Plans", meta: "Run a plan" }
+  { href: "/programs", icon: Trophy, label: "Plans", meta: "Build one" }
 ];
-
-function firstName(value: string) {
-  return value.split("@")[0]?.split(" ")[0] || value;
-}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -37,41 +32,62 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatDayDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short"
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 export default async function DashboardPage() {
-  const { profile, supabase, user } = await requireUser();
-  const displayName = firstName(profile?.display_name || user.email || "there");
-  const unit = profile?.unit_preference ?? "kg";
-  const [activeWorkout, progress, bodyweightLogs, activePlan] =
-    await Promise.all([
-      getActiveWorkout(supabase),
-      getProgressSummary(supabase),
-      getBodyweightLogs(supabase),
-      getActiveProgramEnrollment(supabase)
-    ]);
-  const latestWeight = bodyweightLogs[0];
+  const { supabase } = await requireUser();
+  const [activeWorkout, todayPlan] = await Promise.all([
+    getActiveWorkout(supabase),
+    getTodayPlanOverview(supabase)
+  ]);
+  const dueDay = todayPlan?.program_day;
+  const isCalendar = todayPlan?.schedule_type === "calendar";
+  const heroTitle = activeWorkout
+    ? activeWorkout.name ?? "Workout"
+    : dueDay
+      ? dueDay.name
+      : todayPlan?.status === "rest"
+        ? "Rest day"
+        : "Start a workout";
+  const heroMeta = activeWorkout
+    ? `Started ${formatDate(activeWorkout.started_at)}`
+    : todayPlan
+      ? `${todayPlan.program_name} - ${
+          isCalendar ? "Fixed weekdays" : "Next in order"
+        }`
+      : "No plan selected";
 
   return (
     <div className="space-y-6">
       <header className="space-y-1">
         <p className="text-sm font-bold text-[color:var(--accent)]">Today</p>
-        <h1 className="text-4xl font-black tracking-normal">
-          Ready, {displayName}?
-        </h1>
+        <h1 className="text-4xl font-black tracking-normal">Train fast.</h1>
       </header>
 
       <section className="app-card overflow-hidden p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
-              {activeWorkout ? "In progress" : "Next up"}
-            </p>
-            <h2 className="mt-4 text-2xl font-black">
-              {activeWorkout?.name ?? "Start a workout"}
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
               {activeWorkout
-                ? `Started ${formatDate(activeWorkout.started_at)}`
-                : "Blank session. Add lifts as you train."}
+                ? "In progress"
+                : todayPlan?.status === "done"
+                  ? "Done today"
+                  : todayPlan?.status === "rest"
+                    ? "No scheduled lift"
+                    : todayPlan
+                      ? todayPlan.schedule_type === "calendar"
+                        ? "Fixed weekdays"
+                        : "Next in order"
+                      : "Quick start"}
+            </p>
+            <h2 className="mt-4 text-2xl font-black">{heroTitle}</h2>
+            <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
+              {heroMeta}
             </p>
           </div>
           <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--accent)] text-zinc-950">
@@ -88,6 +104,24 @@ export default async function DashboardPage() {
               <Play aria-hidden="true" className="size-5 fill-current" />
               Resume workout
             </Link>
+          ) : dueDay && todayPlan?.status !== "done" ? (
+            <form action={startWorkoutFromProgramDay}>
+              <input
+                type="hidden"
+                name="enrollmentId"
+                value={todayPlan.enrollment_id}
+              />
+              <input type="hidden" name="programDayId" value={dueDay.id} />
+              <input
+                type="hidden"
+                name="scheduledFor"
+                value={todayPlan.scheduled_for}
+              />
+              <FormSubmitButton pendingLabel="Starting...">
+                <Play aria-hidden="true" className="size-5 fill-current" />
+                Start {dueDay.name}
+              </FormSubmitButton>
+            </form>
           ) : (
             <form action={startBlankWorkout}>
               <FormSubmitButton pendingLabel="Starting...">
@@ -99,59 +133,69 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
-        <div className="app-card-flat p-4">
-          <p className="text-xs font-bold uppercase text-[color:var(--muted)]">
-            This week
+      {todayPlan?.status === "done" && dueDay ? (
+        <section className="app-card-flat p-4">
+          <h2 className="text-base font-black">{dueDay.name} done</h2>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            Scheduled for {formatDayDate(todayPlan.scheduled_for)}.
           </p>
-          <p className="mt-2 text-3xl font-black">
-            {progress.this_week_workouts}
+        </section>
+      ) : null}
+
+      {todayPlan?.missed ? (
+        <section className="app-card-flat p-4">
+          <div className="flex items-start gap-3">
+            <CalendarDays
+              aria-hidden="true"
+              className="mt-0.5 size-5 shrink-0 text-[color:var(--accent)]"
+            />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-black">
+                Missed {todayPlan.missed.day.name}
+              </h2>
+              <p className="mt-1 text-sm text-[color:var(--muted)]">
+                {formatDayDate(todayPlan.missed.scheduled_for)}. Train it now
+                or leave it missed.
+              </p>
+              <form action={startWorkoutFromProgramDay} className="mt-3">
+                <input
+                  type="hidden"
+                  name="enrollmentId"
+                  value={todayPlan.enrollment_id}
+                />
+                <input
+                  type="hidden"
+                  name="programDayId"
+                  value={todayPlan.missed.day.id}
+                />
+                <input
+                  type="hidden"
+                  name="scheduledFor"
+                  value={todayPlan.missed.scheduled_for}
+                />
+                <FormSubmitButton pendingLabel="Starting...">
+                  Start missed lift
+                </FormSubmitButton>
+              </form>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {isCalendar && dueDay?.schedule_weekdays.length ? (
+        <section className="app-card-flat p-4">
+          <h2 className="text-base font-black">Fixed days</h2>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            {dueDay.name}:{" "}
+            {dueDay.schedule_weekdays
+              .map((weekday) => weekdayLabel(weekday, "short"))
+              .join(", ")}
           </p>
-          <p className="text-sm text-[color:var(--muted)]">workouts</p>
-        </div>
-        <div className="app-card-flat p-4">
-          <p className="text-xs font-bold uppercase text-[color:var(--muted)]">
-            Volume
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {Math.round(progress.total_volume_kg).toLocaleString()}
-          </p>
-          <p className="text-sm text-[color:var(--muted)]">kg total</p>
-        </div>
-        <div className="app-card-flat p-4">
-          <p className="text-xs font-bold uppercase text-[color:var(--muted)]">
-            Weight
-          </p>
-          <p className="mt-2 text-2xl font-black">
-            {latestWeight ? formatWeight(latestWeight.weight_kg, unit) : "-"}
-          </p>
-          <p className="text-sm text-[color:var(--muted)]">latest</p>
-        </div>
-        <div className="app-card-flat p-4">
-          <p className="text-xs font-bold uppercase text-[color:var(--muted)]">
-            Plan
-          </p>
-          <p className="mt-2 truncate text-2xl font-black">
-            {activePlan ? `${activePlan.current_week}.${activePlan.current_day}` : "-"}
-          </p>
-          <p className="truncate text-sm text-[color:var(--muted)]">
-            {activePlan?.program_name ?? "none"}
-          </p>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-black">Quick start</h2>
-          <Link
-            href="/progress"
-            className="inline-flex min-h-9 items-center gap-1 rounded-full border border-[color:var(--panel-border)] px-3 text-xs font-extrabold text-[color:var(--muted)]"
-          >
-            <BarChart3 aria-hidden="true" className="size-4" />
-            Stats
-          </Link>
-        </div>
-
+        <h2 className="text-lg font-black">Quick start</h2>
         <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action) => {
             const Icon = action.icon;

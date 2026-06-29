@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
@@ -86,7 +87,7 @@ export async function getUserSettings(
   return data as UserSettings | null;
 }
 
-export async function getCurrentSession() {
+async function getCurrentSessionUncached() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -96,8 +97,6 @@ export async function getCurrentSession() {
   if (error || !user) {
     return null;
   }
-
-  await ensureUserRows(supabase, user);
 
   const [profile, settings] = await Promise.all([
     getProfile(supabase, user.id),
@@ -111,6 +110,8 @@ export async function getCurrentSession() {
     user
   } satisfies AuthenticatedSession;
 }
+
+export const getCurrentSession = cache(getCurrentSessionUncached);
 
 export async function requireUser() {
   const session = await getCurrentSession();
