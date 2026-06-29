@@ -8,6 +8,7 @@ const dashboardItems = [
   ["/goals", "Goals", "Set simple training targets."],
   ["/bodyweight", "Bodyweight", "Log weight with kg/lb-aware display."],
   ["/progress", "Progress", "Review volume, consistency, and history."],
+  ["/import/programs", "Import", "Paste a program CSV."],
   ["/export", "Export", "Download JSON or workout CSV backups."],
   ["/install", "Install", "Add the app to your iPhone Home Screen."]
 ];

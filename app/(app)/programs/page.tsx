@@ -98,6 +98,13 @@ export default async function ProgramsPage() {
         </p>
       </header>
 
+      <Link
+        href="/import/programs"
+        className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-semibold"
+      >
+        Import Program CSV
+      </Link>
+
       {activeEnrollment ? (
         <Link
           href="/programs/active"
