@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { FileUp, Play, Plus, Trophy } from "lucide-react";
+import { FileUp, Play, Plus, Trash2, Trophy } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
-import { enrollProgram } from "@/app/(app)/programs/actions";
+import { enrollProgram, removeProgram } from "@/app/(app)/programs/actions";
 import {
   getActiveProgramEnrollment,
   getProgramSummaries,
@@ -82,6 +82,16 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
             </FormSubmitButton>
           </form>
         ) : null}
+        <form action={removeProgram}>
+          <input type="hidden" name="programId" value={program.id} />
+          <FormSubmitButton
+            pendingLabel={program.is_public ? "Hiding..." : "Deleting..."}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--danger)]/50 px-3 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+            {program.is_public ? "Hide starter" : "Delete plan"}
+          </FormSubmitButton>
+        </form>
       </div>
     </article>
   );

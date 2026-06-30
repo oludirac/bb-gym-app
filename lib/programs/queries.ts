@@ -320,10 +320,11 @@ function mapProgram(raw: RawProgram): ProgramDetail {
 }
 
 export async function getProgramSummaries(supabase: SupabaseClient) {
-  const { data, error } = await supabase
-    .from("programs")
-    .select(
-      `
+  const [programsResult, hiddenResult] = await Promise.all([
+    supabase
+      .from("programs")
+      .select(
+        `
         id,
         owner_id,
         is_public,
@@ -340,15 +341,30 @@ export async function getProgramSummaries(supabase: SupabaseClient) {
           program_days (id)
         )
       `
-    )
-    .order("is_public", { ascending: true })
-    .order("created_at", { ascending: false });
+      )
+      .order("is_public", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase.from("hidden_public_programs").select("program_id")
+  ]);
 
-  if (error) {
-    throw new Error(error.message);
+  if (programsResult.error) {
+    throw new Error(programsResult.error.message);
   }
 
-  return ((data ?? []) as RawProgram[]).map((program) => ({
+  if (hiddenResult.error) {
+    throw new Error(hiddenResult.error.message);
+  }
+
+  const hiddenPublicProgramIds = new Set(
+    (hiddenResult.data ?? []).map((row) => row.program_id as string)
+  );
+
+  return ((programsResult.data ?? []) as RawProgram[])
+    .filter(
+      (program) =>
+        !program.is_public || !hiddenPublicProgramIds.has(program.id)
+    )
+    .map((program) => ({
     avg_session_minutes: program.avg_session_minutes,
     categories: (program.program_categories ?? []).map((item) => item.category),
     day_count: (program.program_weeks ?? []).reduce(

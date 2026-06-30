@@ -10,6 +10,7 @@ import {
   deleteProgramDay,
   deleteProgramExercise,
   deleteProgramSet,
+  removeProgram,
   updateProgramBasics,
   updateProgramDay,
   updateProgramSet
@@ -436,6 +437,17 @@ export default async function EditProgramPage({
         </section>
 
         <FormSubmitButton pendingLabel="Saving...">Save plan</FormSubmitButton>
+      </form>
+
+      <form action={removeProgram} className="app-card-flat border-[color:var(--danger)]/40 p-3">
+        <input type="hidden" name="programId" value={program.id} />
+        <FormSubmitButton
+          pendingLabel="Deleting..."
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+        >
+          <Trash2 aria-hidden="true" className="size-4" />
+          Delete plan
+        </FormSubmitButton>
       </form>
 
       <form action={addProgramDay} className="app-card-flat grid gap-2 p-3">

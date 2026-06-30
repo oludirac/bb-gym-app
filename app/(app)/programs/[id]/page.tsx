@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil, Play } from "lucide-react";
+import { Pencil, Play, Trash2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
-import { copyProgram, enrollProgram } from "@/app/(app)/programs/actions";
+import {
+  copyProgram,
+  enrollProgram,
+  removeProgram
+} from "@/app/(app)/programs/actions";
 import { getProgramDetail } from "@/lib/programs/queries";
 import { formatWeekdays } from "@/lib/scheduling/weekdays";
 import { requireUser } from "@/lib/auth/session";
@@ -261,6 +265,16 @@ export default async function ProgramDetailPage({
               Edit
             </Link>
           )}
+          <form action={removeProgram} className="col-span-2">
+            <input type="hidden" name="programId" value={program.id} />
+            <FormSubmitButton
+              pendingLabel={program.is_public ? "Hiding..." : "Deleting..."}
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--danger)]/50 px-3 text-sm font-semibold text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+              {program.is_public ? "Hide starter plan" : "Delete plan"}
+            </FormSubmitButton>
+          </form>
         </div>
       </div>
     </div>

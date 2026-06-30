@@ -716,6 +716,79 @@ export async function completeProgramEnrollment(formData: FormData) {
   redirect("/programs");
 }
 
+async function cancelActiveEnrollmentForProgram(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  userId: string,
+  programId: string
+) {
+  const { data: activeEnrollments } = await supabase
+    .from("program_enrollments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("program_id", programId)
+    .eq("status", "active");
+
+  const activeEnrollmentIds = (activeEnrollments ?? []).map(
+    (enrollment) => enrollment.id as string
+  );
+
+  if (activeEnrollmentIds.length === 0) {
+    return;
+  }
+
+  await supabase
+    .from("program_enrollments")
+    .update({
+      completed_at: new Date().toISOString(),
+      status: "cancelled"
+    })
+    .in("id", activeEnrollmentIds);
+
+  await supabase
+    .from("user_settings")
+    .update({ active_program_enrollment_id: null })
+    .eq("user_id", userId)
+    .in("active_program_enrollment_id", activeEnrollmentIds);
+}
+
+export async function removeProgram(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const programId = fieldValue(formData, "programId");
+
+  if (!programId) {
+    redirect("/programs");
+  }
+
+  const program = await getProgramDetail(supabase, programId);
+
+  if (!program) {
+    redirect("/programs");
+  }
+
+  await cancelActiveEnrollmentForProgram(supabase, user.id, program.id);
+
+  if (program.is_public) {
+    await supabase.from("hidden_public_programs").upsert({
+      program_id: program.id,
+      user_id: user.id
+    });
+  } else if (program.owner_id === user.id) {
+    await supabase
+      .from("programs")
+      .delete()
+      .eq("id", program.id)
+      .eq("owner_id", user.id)
+      .eq("is_public", false);
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/programs");
+  revalidatePath(`/programs/${program.id}`);
+  revalidatePath(`/programs/${program.id}/edit`);
+  revalidatePath("/programs/active");
+  redirect("/programs");
+}
+
 export async function startWorkoutFromProgramDay(formData: FormData) {
   const { supabase, user } = await requireUser();
   const enrollmentId = fieldValue(formData, "enrollmentId");
