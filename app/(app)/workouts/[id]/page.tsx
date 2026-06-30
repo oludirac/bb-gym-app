@@ -101,7 +101,7 @@ export default async function WorkoutDetailPage({
           pendingLabel="Deleting..."
           className="min-h-12 w-full rounded-md border border-red-500/40 px-4 text-base font-semibold text-red-200 disabled:cursor-wait disabled:opacity-70"
         >
-          Delete Workout
+          Delete from history
         </FormSubmitButton>
       </form>
     </div>

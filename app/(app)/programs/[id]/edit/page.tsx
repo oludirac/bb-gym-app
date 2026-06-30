@@ -127,18 +127,53 @@ function formatKg(value: number | null) {
   })}kg`;
 }
 
-function formatRepRange(set: ProgramSet | undefined) {
-  if (!set) {
-    return "no reps";
+function formatReps(min: number | null, max: number | null) {
+  if (min !== null && max !== null) {
+    return min === max ? `${min}` : `${min}-${max}`;
   }
 
-  if (set.target_reps_min && set.target_reps_max) {
-    return set.target_reps_min === set.target_reps_max
-      ? `${set.target_reps_min} reps`
-      : `${set.target_reps_min}-${set.target_reps_max} reps`;
+  return `${min ?? max ?? "-"}`;
+}
+
+function samePrescription(a: ProgramSet, b: ProgramSet) {
+  return (
+    a.target_weight_kg === b.target_weight_kg &&
+    a.target_reps_min === b.target_reps_min &&
+    a.target_reps_max === b.target_reps_max
+  );
+}
+
+function groupedSetSummaries(sets: ProgramSet[]) {
+  const summaries: string[] = [];
+  let index = 0;
+
+  while (index < sets.length) {
+    const first = sets[index];
+    let lastIndex = index;
+
+    while (
+      lastIndex + 1 < sets.length &&
+      samePrescription(first, sets[lastIndex + 1])
+    ) {
+      lastIndex += 1;
+    }
+
+    const last = sets[lastIndex];
+    const range =
+      first.sort_order === last.sort_order
+        ? `${first.sort_order}`
+        : `${first.sort_order}-${last.sort_order}`;
+
+    summaries.push(
+      `${range}: ${formatKg(first.target_weight_kg)} x ${formatReps(
+        first.target_reps_min,
+        first.target_reps_max
+      )}`
+    );
+    index = lastIndex + 1;
   }
 
-  return `${set.target_reps_min ?? set.target_reps_max ?? "-"} reps`;
+  return summaries;
 }
 
 function ExerciseCard({
@@ -148,7 +183,7 @@ function ExerciseCard({
   exercise: ProgramExercise;
   programId: string;
 }) {
-  const firstSet = exercise.sets[0];
+  const setSummaries = groupedSetSummaries(exercise.sets);
 
   return (
     <article className="app-card-flat overflow-hidden">
@@ -157,10 +192,15 @@ function ExerciseCard({
           <h4 className="truncate text-base font-black">
             {exercise.sort_order}. {exercise.exercise_name}
           </h4>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            {exercise.sets.length} set{exercise.sets.length === 1 ? "" : "s"}{" "}
-            | {formatRepRange(firstSet)} | {formatKg(firstSet?.target_weight_kg ?? null)}
-          </p>
+          <div className="mt-2 grid gap-1 text-sm text-[color:var(--muted)]">
+            {setSummaries.length === 0 ? (
+              <p>No sets</p>
+            ) : (
+              setSummaries.map((summary, index) => (
+                <p key={`${summary}-${index}`}>{summary}</p>
+              ))
+            )}
+          </div>
         </div>
         <form action={deleteProgramExercise}>
           <input type="hidden" name="programId" value={programId} />
@@ -201,16 +241,32 @@ function ExerciseCard({
 function DayEditor({
   day,
   exerciseOptions,
+  initiallyOpen,
   programId
 }: {
   day: ProgramDay;
   exerciseOptions: Awaited<ReturnType<typeof getExerciseOptions>>;
+  initiallyOpen: boolean;
   programId: string;
 }) {
   return (
-    <section className="space-y-3">
-      <article className="app-card p-4">
-        <div className="mb-3 flex items-start justify-between gap-3">
+    <details className="app-card overflow-hidden" open={initiallyOpen}>
+      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-black">
+            Day {day.day_number} - {day.name}
+          </h2>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            {day.exercises.length} lift{day.exercises.length === 1 ? "" : "s"}{" "}
+            | {formatWeekdays(day.schedule_weekdays)}
+          </p>
+        </div>
+        <span className="app-chip shrink-0">Edit</span>
+      </summary>
+
+      <section className="space-y-3 border-t border-[color:var(--panel-border)] p-3">
+        <article className="app-card-flat p-4">
+          <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase text-[color:var(--muted)]">
               Day {day.day_number}
@@ -230,9 +286,9 @@ function DayEditor({
               <Trash2 aria-hidden="true" className="size-4" />
             </FormSubmitButton>
           </form>
-        </div>
+          </div>
 
-        <form action={updateProgramDay} className="grid gap-2">
+          <form action={updateProgramDay} className="grid gap-2">
           <input type="hidden" name="programId" value={programId} />
           <input type="hidden" name="programDayId" value={day.id} />
           <input
@@ -248,26 +304,27 @@ function DayEditor({
             className="field-base text-base"
           />
           <FormSubmitButton pendingLabel="Saving...">Save day</FormSubmitButton>
-        </form>
-      </article>
+          </form>
+        </article>
 
-      <ProgramExercisePicker
-        action={addProgramExercise}
-        exerciseOptions={exerciseOptions}
-        programDayId={day.id}
-        programId={programId}
-      />
+        <ProgramExercisePicker
+          action={addProgramExercise}
+          exerciseOptions={exerciseOptions}
+          programDayId={day.id}
+          programId={programId}
+        />
 
-      <div className="space-y-3">
-        {day.exercises.map((exercise) => (
-          <ExerciseCard
-            key={exercise.id}
-            exercise={exercise}
-            programId={programId}
-          />
-        ))}
-      </div>
-    </section>
+        <div className="space-y-3">
+          {day.exercises.map((exercise) => (
+            <ExerciseCard
+              key={exercise.id}
+              exercise={exercise}
+              programId={programId}
+            />
+          ))}
+        </div>
+      </section>
+    </details>
   );
 }
 
@@ -395,11 +452,12 @@ export default async function EditProgramPage({
       </form>
 
       <div className="space-y-6">
-        {days.map((day) => (
+        {days.map((day, index) => (
           <DayEditor
             key={day.id}
             day={day}
             exerciseOptions={exerciseOptions}
+            initiallyOpen={index === 0}
             programId={program.id}
           />
         ))}

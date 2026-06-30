@@ -12,6 +12,7 @@ import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   addExerciseToWorkout,
   addWorkoutSet,
+  cancelActiveWorkout,
   finishWorkout,
   removeWorkoutExercise,
   saveWorkoutSet,
@@ -229,7 +230,7 @@ export default async function ActiveWorkoutPage() {
   );
 
   return (
-    <div className="space-y-5 pb-32">
+    <div className="space-y-5 pb-44">
       <header className="app-card p-5">
         <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
           Workout
@@ -294,11 +295,21 @@ export default async function ActiveWorkoutPage() {
               Complete workout
             </FormSubmitButton>
           </form>
+          <form action={cancelActiveWorkout}>
+            <input type="hidden" name="workoutId" value={activeWorkout.id} />
+            <FormSubmitButton
+              pendingLabel="Cancelling..."
+              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+            >
+              Cancel
+            </FormSubmitButton>
+          </form>
           <Link
             href="/workouts"
-            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black"
+            className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black"
           >
-            <History aria-hidden="true" className="size-5" />
+            <History aria-hidden="true" className="size-4" />
+            History
           </Link>
         </div>
       </div>

@@ -336,6 +336,32 @@ export async function finishWorkout(formData: FormData) {
   redirect(`/workouts/${workoutId}`);
 }
 
+export async function cancelActiveWorkout(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const workoutId = fieldValue(formData, "workoutId");
+
+  if (!workoutId) {
+    redirect("/workouts/active");
+  }
+
+  await supabase
+    .from("workouts")
+    .update({
+      finished_at: new Date().toISOString(),
+      status: "discarded"
+    })
+    .eq("id", workoutId)
+    .eq("owner_id", user.id)
+    .eq("status", "active");
+
+  revalidatePath("/dashboard");
+  revalidatePath("/workouts");
+  revalidatePath("/workouts/active");
+  revalidatePath("/programs/active");
+  revalidatePath("/progress");
+  redirect("/dashboard");
+}
+
 export async function deleteWorkout(formData: FormData) {
   const { supabase } = await requireUser();
   const workoutId = fieldValue(formData, "workoutId");
