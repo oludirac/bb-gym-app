@@ -350,9 +350,24 @@ export async function addProgramExercise(formData: FormData) {
   const programId = fieldValue(formData, "programId");
   const programDayId = fieldValue(formData, "programDayId");
   const exerciseId = fieldValue(formData, "exerciseId");
+  const setCount = Math.min(
+    10,
+    Math.max(1, fieldNumber(formData, "setCount") ?? 3)
+  );
+  const repsMin = optionalNumber(fieldValue(formData, "targetRepsMin")) ?? 8;
+  const repsMax =
+    optionalNumber(fieldValue(formData, "targetRepsMax")) ?? repsMin;
+  const targetWeightKg = optionalNumber(fieldValue(formData, "targetWeightKg"));
 
   if (!programId || !programDayId || !exerciseId) {
     redirect(programId ? `/programs/${programId}/edit` : "/programs");
+  }
+
+  if (repsMin > repsMax) {
+    redirectWithError(
+      `/programs/${programId}/edit`,
+      "Rep range must go from low to high."
+    );
   }
 
   const sortOrder = await nextSortOrder(
@@ -362,11 +377,28 @@ export async function addProgramExercise(formData: FormData) {
     programDayId
   );
 
-  await supabase.from("program_exercises").insert({
-    exercise_id: exerciseId,
-    program_day_id: programDayId,
-    sort_order: sortOrder
-  });
+  const { data: programExercise } = await supabase
+    .from("program_exercises")
+    .insert({
+      exercise_id: exerciseId,
+      program_day_id: programDayId,
+      sort_order: sortOrder
+    })
+    .select("id")
+    .single();
+
+  if (programExercise?.id) {
+    await supabase.from("program_sets").insert(
+      Array.from({ length: setCount }, (_, index) => ({
+        program_exercise_id: programExercise.id,
+        set_type: "working",
+        sort_order: index + 1,
+        target_reps_min: repsMin,
+        target_reps_max: repsMax,
+        target_weight_kg: targetWeightKg
+      }))
+    );
+  }
 
   revalidatePath(`/programs/${programId}/edit`);
   redirect(`/programs/${programId}/edit`);

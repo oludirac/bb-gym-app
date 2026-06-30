@@ -8,8 +8,7 @@ import {
   Scale,
   Settings,
   Smartphone,
-  Target,
-  TimerReset
+  Target
 } from "lucide-react";
 import { signOut } from "@/app/(auth)/actions";
 import { FormSubmitButton } from "@/components/form-submit-button";
@@ -17,7 +16,6 @@ import { requireUser } from "@/lib/auth/session";
 
 const moreItems = [
   { href: "/exercises", icon: LibraryBig, label: "Exercises", meta: "Exercise list" },
-  { href: "/templates", icon: TimerReset, label: "Routines", meta: "Saved sessions" },
   { href: "/bodyweight", icon: Scale, label: "Weight", meta: "Weigh-ins" },
   { href: "/goals", icon: Target, label: "Goals", meta: "Targets" },
   { href: "/import/programs", icon: FileUp, label: "Import", meta: "Plan CSV" },

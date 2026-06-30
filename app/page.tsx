@@ -12,7 +12,7 @@ export default function HomePage() {
             Log workouts fast.
           </h1>
           <p className="text-base leading-7 text-[color:var(--muted)]">
-            Built for gym sessions, saved routines, plans, and progress.
+            Built for gym sessions, plans, and progress.
           </p>
         </div>
 

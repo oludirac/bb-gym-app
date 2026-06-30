@@ -1,10 +1,19 @@
 import Link from "next/link";
-import { Check, Dumbbell, Flag, History, Plus, Repeat2 } from "lucide-react";
+import {
+  Check,
+  Dumbbell,
+  Flag,
+  History,
+  Plus,
+  Repeat2,
+  Trash2
+} from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   addExerciseToWorkout,
   addWorkoutSet,
   finishWorkout,
+  removeWorkoutExercise,
   saveWorkoutSet,
   startBlankWorkout
 } from "@/app/(app)/workouts/actions";
@@ -35,7 +44,7 @@ function SetRow({ set }: { set: WorkoutSet }) {
   return (
     <form
       action={saveWorkoutSet}
-      className={`grid grid-cols-[2.5rem_1fr_1fr_2.75rem] items-end gap-2 rounded-xl border p-3 ${
+      className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)] items-end gap-2 overflow-hidden rounded-xl border p-2 ${
         isDone
           ? "border-[color:var(--success)]/55 bg-emerald-500/10"
           : "border-[color:var(--panel-border)] bg-[#0d1117]"
@@ -46,7 +55,7 @@ function SetRow({ set }: { set: WorkoutSet }) {
       <div className="grid min-h-11 place-items-center rounded-lg border border-[color:var(--panel-border)] text-sm font-black">
         {set.sort_order}
       </div>
-      <label className="grid gap-1">
+      <label className="grid min-w-0 gap-1">
         <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
           kg
         </span>
@@ -57,10 +66,10 @@ function SetRow({ set }: { set: WorkoutSet }) {
           step="0.5"
           min="0"
           defaultValue={set.weight_kg ?? set.target_weight_kg ?? ""}
-          className="field-base min-h-11 px-1 text-center text-sm font-black"
+          className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
         />
       </label>
-      <label className="grid gap-1">
+      <label className="grid min-w-0 gap-1">
         <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
           reps
         </span>
@@ -72,16 +81,17 @@ function SetRow({ set }: { set: WorkoutSet }) {
           defaultValue={
             set.reps ?? set.target_reps_min ?? set.target_reps_max ?? ""
           }
-          className="field-base min-h-11 px-1 text-center text-sm font-black"
+          className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
         />
       </label>
       <FormSubmitButton
-        pendingLabel="..."
-        className={`inline-flex size-11 items-center justify-center rounded-xl text-zinc-950 transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70 ${
+        pendingLabel="Saving..."
+        className={`col-span-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-black text-zinc-950 transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70 ${
           isDone ? "bg-[color:var(--success)]" : "bg-[color:var(--accent)]"
         }`}
       >
         <Check aria-hidden="true" className="size-5" strokeWidth={3} />
+        {isDone ? "Done" : "Save set"}
       </FormSubmitButton>
     </form>
   );
@@ -102,6 +112,19 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
             {done}/{exercise.sets.length} sets done
           </p>
         </div>
+        <form action={removeWorkoutExercise}>
+          <input
+            type="hidden"
+            name="workoutExerciseId"
+            value={exercise.id}
+          />
+          <FormSubmitButton
+            pendingLabel="..."
+            className="inline-flex size-11 items-center justify-center rounded-xl border border-[color:var(--danger)]/40 text-red-300 transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70"
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+          </FormSubmitButton>
+        </form>
       </div>
 
       <div className="space-y-2 p-3">

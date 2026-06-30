@@ -43,9 +43,12 @@
 html {
   min-height: 100%;
   background: var(--background);
+  overflow-x: hidden;
 }
 
 body {
+  width: 100%;
+  max-width: 100%;
   min-height: 100%;
   margin: 0;
   background:
@@ -56,6 +59,7 @@ body {
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
     "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
 button,
@@ -76,7 +80,15 @@ textarea {
 input,
 select,
 textarea {
+  max-width: 100%;
   color: var(--foreground);
+}
+
+form,
+section,
+article,
+div {
+  min-width: 0;
 }
 
 input::placeholder,
@@ -100,6 +112,9 @@ textarea:focus-visible {
 }
 
 .app-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   border: 1px solid var(--panel-border);
   border-radius: 12px;
   background: linear-gradient(180deg, var(--panel-raised), var(--panel));
@@ -107,6 +122,9 @@ textarea:focus-visible {
 }
 
 .app-card-flat {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   border: 1px solid var(--panel-border);
   border-radius: 12px;
   background: var(--panel);
@@ -127,6 +145,9 @@ textarea:focus-visible {
 }
 
 .field-base {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 3rem;
   border: 1px solid var(--panel-border);
   border-radius: 10px;
