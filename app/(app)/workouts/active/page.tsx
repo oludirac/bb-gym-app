@@ -25,42 +25,6 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function formatKg(value: number | null) {
-  if (value === null) {
-    return "-";
-  }
-
-  return `${Number(value).toLocaleString(undefined, {
-    maximumFractionDigits: 1
-  })}kg`;
-}
-
-function formatTarget(set: WorkoutSet) {
-  const reps =
-    set.target_reps_min && set.target_reps_max
-      ? set.target_reps_min === set.target_reps_max
-        ? `${set.target_reps_min}`
-        : `${set.target_reps_min}-${set.target_reps_max}`
-      : set.target_reps_min || set.target_reps_max;
-  const weight = set.target_weight_kg ?? set.weight_kg;
-
-  if (!reps && weight === null) {
-    return "-";
-  }
-
-  return [weight === null ? null : formatKg(weight), reps ? `x${reps}` : null]
-    .filter(Boolean)
-    .join(" ");
-}
-
-function formatPrevious(set: WorkoutSet) {
-  if (set.previous_reps === null && set.previous_weight_kg === null) {
-    return "-";
-  }
-
-  return `${formatKg(set.previous_weight_kg)} x${set.previous_reps ?? "-"}`;
-}
-
 function completedCount(exercise: WorkoutExercise) {
   return exercise.sets.filter((set) => set.completed_at).length;
 }
@@ -71,7 +35,7 @@ function SetRow({ set }: { set: WorkoutSet }) {
   return (
     <form
       action={saveWorkoutSet}
-      className={`grid grid-cols-[2.25rem_minmax(3.75rem,1fr)_minmax(3.75rem,1fr)_4rem_3.5rem_2.75rem] items-center gap-1.5 rounded-xl border p-2 ${
+      className={`grid grid-cols-[2.5rem_1fr_1fr_2.75rem] items-end gap-2 rounded-xl border p-3 ${
         isDone
           ? "border-[color:var(--success)]/55 bg-emerald-500/10"
           : "border-[color:var(--panel-border)] bg-[#0d1117]"
@@ -79,15 +43,13 @@ function SetRow({ set }: { set: WorkoutSet }) {
     >
       <input type="hidden" name="setId" value={set.id} />
       <input type="hidden" name="setType" value="working" />
-      <span className="text-center text-sm font-black">{set.sort_order}</span>
-      <span className="truncate text-xs font-bold text-[color:var(--muted)]">
-        {formatPrevious(set)}
-      </span>
-      <span className="truncate text-xs font-black text-[color:var(--accent)]">
-        {formatTarget(set)}
-      </span>
-      <label>
-        <span className="sr-only">Weight kg</span>
+      <div className="grid min-h-11 place-items-center rounded-lg border border-[color:var(--panel-border)] text-sm font-black">
+        {set.sort_order}
+      </div>
+      <label className="grid gap-1">
+        <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+          kg
+        </span>
         <input
           name="weightKg"
           type="number"
@@ -98,8 +60,10 @@ function SetRow({ set }: { set: WorkoutSet }) {
           className="field-base min-h-11 px-1 text-center text-sm font-black"
         />
       </label>
-      <label>
-        <span className="sr-only">Reps</span>
+      <label className="grid gap-1">
+        <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+          reps
+        </span>
         <input
           name="reps"
           type="number"
@@ -138,15 +102,6 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
             {done}/{exercise.sets.length} sets done
           </p>
         </div>
-      </div>
-
-      <div className="grid grid-cols-[2.25rem_minmax(3.75rem,1fr)_minmax(3.75rem,1fr)_4rem_3.5rem_2.75rem] gap-1.5 px-5 pt-3 text-[10px] font-black uppercase text-[color:var(--muted)]">
-        <span className="text-center">Set</span>
-        <span>Last</span>
-        <span>Target</span>
-        <span className="text-center">kg</span>
-        <span className="text-center">reps</span>
-        <span />
       </div>
 
       <div className="space-y-2 p-3">
@@ -311,9 +266,9 @@ export default async function ActiveWorkoutPage() {
         <div className="mx-auto grid max-w-md grid-cols-[1fr_auto] gap-2 rounded-2xl border border-[color:var(--panel-border)] bg-[#080a0d]/95 p-2 shadow-[0_16px_42px_rgba(0,0,0,0.45)] backdrop-blur-xl">
           <form action={finishWorkout}>
             <input type="hidden" name="workoutId" value={activeWorkout.id} />
-            <FormSubmitButton pendingLabel="Finishing...">
+            <FormSubmitButton pendingLabel="Completing...">
               <Flag aria-hidden="true" className="size-5" />
-              Finish
+              Complete workout
             </FormSubmitButton>
           </form>
           <Link
