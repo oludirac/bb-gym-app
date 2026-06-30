@@ -3,19 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { bodyPartCategorySet } from "@/lib/exercises/categories";
 import { displayUnitToKg } from "@/lib/unit-conversion";
 import { normalizeCsvName, parseCsv } from "@/lib/csv";
 
 const requiredColumns = [
   "program_name",
-  "week",
-  "day",
   "day_name",
   "exercise_name",
-  "set_order"
+  "category",
+  "set_number",
+  "reps_min",
+  "reps_max",
+  "weight_kg"
 ];
+const requiredValueColumns = requiredColumns.filter(
+  (column) => column !== "weight_kg"
+);
 
-const allowedCategories = new Set([
+const allowedProgramCategories = new Set([
   "strength",
   "hypertrophy",
   "powerbuilding",
@@ -33,10 +39,10 @@ const allowedSetTypes = new Set(["warmup", "working", "drop", "failure"]);
 type CsvRow = Record<string, string>;
 
 type ParsedProgramRow = {
-  category: string | null;
   day: number;
   dayName: string;
   difficulty: string | null;
+  exerciseCategory: string;
   exerciseId: string;
   exerciseName: string;
   notes: string | null;
@@ -81,6 +87,27 @@ function positiveInteger(value: string) {
 
 function normalizeEnumValue(value: string) {
   return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function slugify(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return slug || `exercise-${Date.now()}`;
+}
+
+function cell(row: CsvRow, ...keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+
+    if (value?.trim()) {
+      return value.trim();
+    }
+  }
+
+  return "";
 }
 
 async function saveImportErrors(
@@ -178,19 +205,28 @@ export async function importProgramCsv(formData: FormData) {
   });
   const { data: exercises } = await supabase
     .from("exercises")
-    .select("id, name")
+    .select("id, name, is_builtin, owner_id, category")
     .is("deleted_at", null);
-  const exerciseByName = new Map(
-    (exercises ?? []).map((exercise) => [
-      normalizeCsvName(exercise.name),
-      exercise.id
-    ])
-  );
+  const exerciseByName = new Map<string, string>();
+
+  for (const exercise of (exercises ?? []).filter((item) => !item.is_builtin)) {
+    exerciseByName.set(normalizeCsvName(exercise.name), exercise.id);
+  }
+
+  for (const exercise of (exercises ?? []).filter((item) => item.is_builtin)) {
+    const key = normalizeCsvName(exercise.name);
+
+    if (!exerciseByName.has(key)) {
+      exerciseByName.set(key, exercise.id);
+    }
+  }
+
+  const dayNumberByName = new Map<string, number>();
   const parsedRows: ParsedProgramRow[] = [];
-  const programName = rowObjects[0]?.row.program_name?.trim() ?? "";
+  const programName = cell(rowObjects[0]?.row ?? {}, "program_name");
 
   for (const { row, rowNumber } of rowObjects) {
-    for (const column of requiredColumns) {
+    for (const column of requiredValueColumns) {
       if (!row[column]?.trim()) {
         errors.push({
           code: "required",
@@ -202,7 +238,7 @@ export async function importProgramCsv(formData: FormData) {
       }
     }
 
-    if (row.program_name?.trim() !== programName) {
+    if (cell(row, "program_name") !== programName) {
       errors.push({
         code: "multiple_programs",
         field: "program_name",
@@ -212,56 +248,53 @@ export async function importProgramCsv(formData: FormData) {
       });
     }
 
-    const week = positiveInteger(row.week ?? "");
-    const day = positiveInteger(row.day ?? "");
-    const setOrder = positiveInteger(row.set_order ?? "");
-    const exerciseName = row.exercise_name?.trim() ?? "";
-    const exerciseId = exerciseByName.get(normalizeCsvName(exerciseName));
-    const repsMin = optionalNumber(row.reps_min ?? "");
-    const repsMax = optionalNumber(row.reps_max ?? "");
-    const weight = optionalNumber(row.weight ?? "");
+    const week = positiveInteger(cell(row, "week")) ?? 1;
+    const dayName = cell(row, "day_name");
+    const dayNameKey = normalizeCsvName(dayName);
+    const day =
+      positiveInteger(cell(row, "day")) ??
+      dayNumberByName.get(dayNameKey) ??
+      dayNumberByName.size + 1;
+
+    if (dayNameKey && !dayNumberByName.has(dayNameKey)) {
+      dayNumberByName.set(dayNameKey, day);
+    }
+
+    const setOrder = positiveInteger(cell(row, "set_number", "set_order"));
+    const exerciseName = cell(row, "exercise_name");
+    const exerciseNameKey = normalizeCsvName(exerciseName);
+    let exerciseId = exerciseByName.get(exerciseNameKey);
+    const repsMin = optionalNumber(cell(row, "reps_min"));
+    const repsMax = optionalNumber(cell(row, "reps_max"));
+    const weightKg = optionalNumber(cell(row, "weight_kg"));
+    const legacyWeight = optionalNumber(cell(row, "weight"));
     const weightUnit = row.weight_unit?.trim().toLowerCase() === "lb" ? "lb" : "kg";
     const setType = normalizeEnumValue(row.set_type || "working");
-    const category = row.category ? normalizeEnumValue(row.category) : null;
+    const exerciseCategory = normalizeEnumValue(
+      cell(row, "category", "exercise_category")
+    );
+    const programCategory = row.program_category
+      ? normalizeEnumValue(row.program_category)
+      : null;
     const difficulty = row.difficulty
       ? normalizeEnumValue(row.difficulty)
       : null;
 
-    if (!week) {
-      errors.push({
-        code: "invalid_number",
-        field: "week",
-        message: "week must be a positive whole number.",
-        raw_row: row,
-        row_number: rowNumber
-      });
-    }
-
-    if (!day) {
-      errors.push({
-        code: "invalid_number",
-        field: "day",
-        message: "day must be a positive whole number.",
-        raw_row: row,
-        row_number: rowNumber
-      });
-    }
-
     if (!setOrder) {
       errors.push({
         code: "invalid_number",
-        field: "set_order",
-        message: "set_order must be a positive whole number.",
+        field: "set_number",
+        message: "set_number must be a positive whole number.",
         raw_row: row,
         row_number: rowNumber
       });
     }
 
-    if (!exerciseId) {
+    if (!bodyPartCategorySet.has(exerciseCategory)) {
       errors.push({
-        code: "exercise_not_found",
-        field: "exercise_name",
-        message: `No exercise matched "${exerciseName}". Create it first, then import again.`,
+        code: "invalid_enum",
+        field: "category",
+        message: "category must be a supported body part.",
         raw_row: row,
         row_number: rowNumber
       });
@@ -287,11 +320,11 @@ export async function importProgramCsv(formData: FormData) {
       });
     }
 
-    if (category && !allowedCategories.has(category)) {
+    if (programCategory && !allowedProgramCategories.has(programCategory)) {
       errors.push({
         code: "invalid_enum",
-        field: "category",
-        message: "category is not supported.",
+        field: "program_category",
+        message: "program_category is not supported.",
         raw_row: row,
         row_number: rowNumber
       });
@@ -307,12 +340,53 @@ export async function importProgramCsv(formData: FormData) {
       });
     }
 
-    if (week && day && setOrder && exerciseId && allowedSetTypes.has(setType)) {
+    if (
+      !exerciseId &&
+      exerciseName &&
+      bodyPartCategorySet.has(exerciseCategory)
+    ) {
+      const { data: createdExercise, error: exerciseError } = await supabase
+        .from("exercises")
+        .insert({
+          category: exerciseCategory,
+          equipment: [],
+          is_builtin: false,
+          name: exerciseName,
+          owner_id: user.id,
+          slug: slugify(exerciseName)
+        })
+        .select("id")
+        .single();
+
+      if (exerciseError || !createdExercise?.id) {
+        errors.push({
+          code: "exercise_create_failed",
+          field: "exercise_name",
+          message:
+            exerciseError?.message ??
+            `Could not create custom exercise "${exerciseName}".`,
+          raw_row: row,
+          row_number: rowNumber
+        });
+      } else {
+        exerciseId = createdExercise.id;
+        exerciseByName.set(exerciseNameKey, createdExercise.id);
+      }
+    }
+
+    if (
+      week &&
+      day &&
+      setOrder &&
+      exerciseId &&
+      bodyPartCategorySet.has(exerciseCategory) &&
+      allowedSetTypes.has(setType)
+    ) {
       parsedRows.push({
-        category,
         day,
-        dayName: row.day_name,
+        dayName,
         difficulty,
+        exerciseCategory,
         exerciseId,
         exerciseName,
         notes: row.notes || null,
@@ -324,7 +398,11 @@ export async function importProgramCsv(formData: FormData) {
         rpe: optionalNumber(row.rpe ?? ""),
         setOrder,
         setType,
-        weightKg: weight === null ? null : displayUnitToKg(weight, weightUnit),
+        weightKg:
+          weightKg ??
+          (legacyWeight === null
+            ? null
+            : displayUnitToKg(legacyWeight, weightUnit)),
         week
       });
     }
@@ -359,13 +437,6 @@ export async function importProgramCsv(formData: FormData) {
       }
     ]);
     redirect("/import/programs");
-  }
-
-  if (firstRow.category) {
-    await supabase.from("program_categories").insert({
-      category: firstRow.category,
-      program_id: program.id
-    });
   }
 
   const weekNumbers = [...new Set(parsedRows.map((row) => row.week))].sort(

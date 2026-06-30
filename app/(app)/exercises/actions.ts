@@ -3,16 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
-
-const categories = new Set([
-  "barbell",
-  "dumbbell",
-  "machine",
-  "cable",
-  "bodyweight",
-  "cardio",
-  "mobility"
-]);
+import { bodyPartCategorySet } from "@/lib/exercises/categories";
 
 const difficulties = new Set(["beginner", "intermediate", "advanced"]);
 
@@ -67,7 +58,7 @@ export async function createCustomExercise(formData: FormData) {
     redirectWithError("Exercise name is required.");
   }
 
-  if (!categories.has(category)) {
+  if (!bodyPartCategorySet.has(category)) {
     redirectWithError("Choose a valid category.");
   }
 

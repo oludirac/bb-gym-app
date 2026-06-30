@@ -40,6 +40,7 @@ export type Workout = {
 };
 
 export type ExerciseOption = {
+  category: string;
   id: string;
   is_builtin: boolean;
   name: string;
@@ -400,8 +401,9 @@ export async function getWorkoutDetail(
 export async function getExerciseOptions(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("exercises")
-    .select("id, name, is_builtin")
+    .select("id, name, is_builtin, category")
     .is("deleted_at", null)
+    .order("category", { ascending: true })
     .order("name", { ascending: true });
 
   if (error) {

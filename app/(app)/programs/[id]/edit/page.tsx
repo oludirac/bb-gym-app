@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
+import { ProgramExercisePicker } from "@/components/program-exercise-picker";
 import {
   addProgramDay,
   addProgramExercise,
@@ -116,6 +117,30 @@ function SetEditor({
   );
 }
 
+function formatKg(value: number | null) {
+  if (value === null) {
+    return "no kg";
+  }
+
+  return `${Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 1
+  })}kg`;
+}
+
+function formatRepRange(set: ProgramSet | undefined) {
+  if (!set) {
+    return "no reps";
+  }
+
+  if (set.target_reps_min && set.target_reps_max) {
+    return set.target_reps_min === set.target_reps_max
+      ? `${set.target_reps_min} reps`
+      : `${set.target_reps_min}-${set.target_reps_max} reps`;
+  }
+
+  return `${set.target_reps_min ?? set.target_reps_max ?? "-"} reps`;
+}
+
 function ExerciseCard({
   exercise,
   programId
@@ -123,6 +148,8 @@ function ExerciseCard({
   exercise: ProgramExercise;
   programId: string;
 }) {
+  const firstSet = exercise.sets[0];
+
   return (
     <article className="app-card-flat overflow-hidden">
       <div className="flex items-start justify-between gap-3 border-b border-[color:var(--panel-border)] p-3">
@@ -131,7 +158,8 @@ function ExerciseCard({
             {exercise.sort_order}. {exercise.exercise_name}
           </h4>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            {exercise.sets.length} set{exercise.sets.length === 1 ? "" : "s"}
+            {exercise.sets.length} set{exercise.sets.length === 1 ? "" : "s"}{" "}
+            | {formatRepRange(firstSet)} | {formatKg(firstSet?.target_weight_kg ?? null)}
           </p>
         </div>
         <form action={deleteProgramExercise}>
@@ -146,20 +174,26 @@ function ExerciseCard({
         </form>
       </div>
 
-      <div className="space-y-3 p-3">
-        {exercise.sets.map((set) => (
-          <SetEditor key={set.id} programId={programId} set={set} />
-        ))}
-      </div>
+      <details className="border-t border-[color:var(--panel-border)]">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-3 text-sm font-black text-[color:var(--accent)]">
+          Advanced edit
+          <span className="text-xs text-[color:var(--muted)]">sets</span>
+        </summary>
+        <div className="space-y-3 p-3 pt-0">
+          {exercise.sets.map((set) => (
+            <SetEditor key={set.id} programId={programId} set={set} />
+          ))}
+        </div>
 
-      <form action={addProgramSet} className="border-t border-[color:var(--panel-border)] p-3">
-        <input type="hidden" name="programId" value={programId} />
-        <input type="hidden" name="programExerciseId" value={exercise.id} />
-        <FormSubmitButton pendingLabel="Adding...">
-          <Plus aria-hidden="true" className="size-4" />
-          Add set
-        </FormSubmitButton>
-      </form>
+        <form action={addProgramSet} className="border-t border-[color:var(--panel-border)] p-3">
+          <input type="hidden" name="programId" value={programId} />
+          <input type="hidden" name="programExerciseId" value={exercise.id} />
+          <FormSubmitButton pendingLabel="Adding...">
+            <Plus aria-hidden="true" className="size-4" />
+            Add set
+          </FormSubmitButton>
+        </form>
+      </details>
     </article>
   );
 }
@@ -217,85 +251,12 @@ function DayEditor({
         </form>
       </article>
 
-      <form action={addProgramExercise} className="app-card-flat grid gap-3 p-3">
-        <input type="hidden" name="programId" value={programId} />
-        <input type="hidden" name="programDayId" value={day.id} />
-        <label className="grid gap-1">
-          <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-            Exercise
-          </span>
-          <select name="exerciseId" className="field-base text-base" required>
-            {exerciseOptions.map((exercise) => (
-              <option key={exercise.id} value={exercise.id}>
-                {exercise.name}
-                {exercise.is_builtin ? "" : " (custom)"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="grid grid-cols-4 gap-2">
-          <label className="grid gap-1">
-            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-              sets
-            </span>
-            <select
-              name="setCount"
-              defaultValue="3"
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            >
-              {[1, 2, 3, 4, 5].map((count) => (
-                <option key={count} value={count}>
-                  {count}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1">
-            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-              min
-            </span>
-            <input
-              name="targetRepsMin"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              defaultValue="8"
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-              max
-            </span>
-            <input
-              name="targetRepsMax"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              defaultValue="12"
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-              kg
-            </span>
-            <input
-              name="targetWeightKg"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.5"
-              placeholder="0"
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-        </div>
-        <FormSubmitButton pendingLabel="Adding...">
-          <Plus aria-hidden="true" className="size-4" />
-          Add lift
-        </FormSubmitButton>
-      </form>
+      <ProgramExercisePicker
+        action={addProgramExercise}
+        exerciseOptions={exerciseOptions}
+        programDayId={day.id}
+        programId={programId}
+      />
 
       <div className="space-y-3">
         {day.exercises.map((exercise) => (

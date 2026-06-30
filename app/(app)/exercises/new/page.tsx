@@ -1,18 +1,12 @@
 import Link from "next/link";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { createCustomExercise } from "@/app/(app)/exercises/actions";
+import {
+  bodyPartCategories,
+  formatExerciseCategory
+} from "@/lib/exercises/categories";
 import { getMuscleOptions } from "@/lib/exercises/queries";
 import { requireUser } from "@/lib/auth/session";
-
-const categories = [
-  "barbell",
-  "dumbbell",
-  "machine",
-  "cable",
-  "bodyweight",
-  "cardio",
-  "mobility"
-];
 
 const difficulties = ["", "beginner", "intermediate", "advanced"];
 
@@ -21,10 +15,6 @@ type NewExercisePageProps = {
     error?: string;
   }>;
 };
-
-function formatValue(value: string) {
-  return value ? value.replaceAll("_", " ") : "Not set";
-}
 
 function MuscleCheckboxes({
   muscles,
@@ -114,9 +104,9 @@ export default async function NewExercisePage({
               className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base capitalize outline-none focus:border-[color:var(--accent)]"
               required
             >
-              {categories.map((category) => (
+              {bodyPartCategories.map((category) => (
                 <option key={category} value={category}>
-                  {formatValue(category)}
+                  {formatExerciseCategory(category)}
                 </option>
               ))}
             </select>

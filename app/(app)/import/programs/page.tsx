@@ -4,9 +4,31 @@ import { importProgramCsv } from "@/app/(app)/import/programs/actions";
 import { getRecentProgramImports } from "@/lib/imports/queries";
 import { requireUser } from "@/lib/auth/session";
 
-const sampleCsv = `program_name,category,difficulty,week,day,day_name,exercise_name,set_order,set_type,reps_min,reps_max,weight,weight_unit,rpe,rir,rest_seconds,notes
-My Imported Program,strength,beginner,1,1,Day 1,Barbell Back Squat,1,working,5,5,,kg,7,,180,
-My Imported Program,strength,beginner,1,1,Day 1,Barbell Bench Press,1,working,5,5,,kg,7,,180,`;
+const sampleCsv = `program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+My Imported Plan,Push,Barbell Bench Press,chest,1,6,8,60
+My Imported Plan,Push,Barbell Bench Press,chest,2,6,8,60
+My Imported Plan,Pull,Lat Pulldown,back,1,8,10,45`;
+
+const csvPrompt = `Turn the workout plan below into a CSV for my gym app.
+
+Use exactly these columns:
+plan_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+
+Rules:
+- One row per set.
+- category must be one of: chest, back, shoulders, biceps, triceps, quads, hamstrings, glutes, calves, core, cardio, mobility, full_body.
+- Use kg only.
+- If weight is unknown, leave weight_kg blank.
+- Use simple exercise names.
+- Return only CSV, no explanation.
+
+Workout plan:
+[paste workout here]`;
+
+const createPlanPrompt = `Ask me up to 5 quick questions, then create a simple gym plan CSV using these columns:
+plan_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+
+Keep it practical, use common exercises, and return only CSV when done.`;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -38,10 +60,36 @@ export default async function ProgramImportPage() {
             Plan CSV
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Paste rows. Exercise names need to match existing exercises.
+            Paste a plan CSV. New exercise names become your custom exercises.
           </p>
         </header>
       </div>
+
+      <section className="app-card-flat space-y-3 p-4">
+        <div>
+          <h2 className="text-base font-black">Use ChatGPT to make a CSV</h2>
+          <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
+            Paste this prompt into ChatGPT with any workout plan.
+          </p>
+        </div>
+        <textarea
+          readOnly
+          rows={10}
+          value={csvPrompt}
+          className="w-full rounded-xl border border-[color:var(--panel-border)] bg-zinc-950 px-3 py-3 font-mono text-xs leading-5 outline-none"
+        />
+        <details className="rounded-xl border border-[color:var(--panel-border)] p-3">
+          <summary className="cursor-pointer list-none text-sm font-black text-[color:var(--accent)]">
+            Need a plan first?
+          </summary>
+          <textarea
+            readOnly
+            rows={5}
+            value={createPlanPrompt}
+            className="mt-3 w-full rounded-xl border border-[color:var(--panel-border)] bg-zinc-950 px-3 py-3 font-mono text-xs leading-5 outline-none"
+          />
+        </details>
+      </section>
 
       <form action={importProgramCsv} className="space-y-3">
         <label className="grid gap-2">

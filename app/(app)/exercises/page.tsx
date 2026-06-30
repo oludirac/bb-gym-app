@@ -6,17 +6,11 @@ import {
   normalizeExerciseFilters,
   type ExerciseFilters
 } from "@/lib/exercises/queries";
+import {
+  bodyPartCategories,
+  formatExerciseCategory
+} from "@/lib/exercises/categories";
 import { requireUser } from "@/lib/auth/session";
-
-const categories = [
-  "barbell",
-  "dumbbell",
-  "machine",
-  "cable",
-  "bodyweight",
-  "cardio",
-  "mobility"
-];
 
 const difficulties = ["beginner", "intermediate", "advanced"];
 
@@ -115,9 +109,9 @@ export default async function ExercisesPage({
             value={filters.category}
           >
             <option value="">All categories</option>
-            {categories.map((category) => (
+            {bodyPartCategories.map((category) => (
               <option key={category} value={category}>
-                {formatValue(category)}
+                {formatExerciseCategory(category)}
               </option>
             ))}
           </FilterSelect>
