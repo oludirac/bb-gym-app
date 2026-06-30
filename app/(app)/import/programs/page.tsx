@@ -10,7 +10,10 @@ My Imported Plan,Push,Barbell Bench Press,chest,1,6,8,60
 My Imported Plan,Push,Barbell Bench Press,chest,2,6,8,60
 My Imported Plan,Pull,Lat Pulldown,back,1,8,10,45`;
 
-const csvPrompt = `Turn the workout plan below into a CSV for my gym app.
+function buildCsvPrompt(todayLabel: string) {
+  return `Turn the workout plan below into a CSV for my gym app.
+
+Today's date: ${todayLabel}
 
 Use exactly these columns:
 plan_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
@@ -25,11 +28,16 @@ Rules:
 
 Workout plan:
 [paste workout here]`;
+}
 
-const createPlanPrompt = `Ask me up to 5 quick questions, then create a simple gym plan CSV using these columns:
+function buildCreatePlanPrompt(todayLabel: string) {
+  return `Ask me up to 5 quick questions, then create a simple gym plan CSV using these columns:
 plan_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
 
+Today's date: ${todayLabel}
+
 Keep it practical, use common exercises, and return only CSV when done.`;
+}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -43,6 +51,13 @@ function formatDate(value: string) {
 export default async function ProgramImportPage() {
   const { supabase } = await requireUser();
   const imports = await getRecentProgramImports(supabase);
+  const todayLabel = new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(new Date());
+  const csvPrompt = buildCsvPrompt(todayLabel);
+  const createPlanPrompt = buildCreatePlanPrompt(todayLabel);
 
   return (
     <div className="space-y-6">
