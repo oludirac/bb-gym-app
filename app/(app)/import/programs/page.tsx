@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CopyPromptButton } from "@/components/copy-prompt-button";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { importProgramCsv } from "@/app/(app)/import/programs/actions";
 import { getRecentProgramImports } from "@/lib/imports/queries";
@@ -66,11 +67,14 @@ export default async function ProgramImportPage() {
       </div>
 
       <section className="app-card-flat space-y-3 p-4">
-        <div>
-          <h2 className="text-base font-black">Use ChatGPT to make a CSV</h2>
-          <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-            Paste this prompt into ChatGPT with any workout plan.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-black">Use ChatGPT to make a CSV</h2>
+            <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
+              Paste this prompt into ChatGPT with any workout plan.
+            </p>
+          </div>
+          <CopyPromptButton text={csvPrompt} />
         </div>
         <textarea
           readOnly
@@ -79,8 +83,9 @@ export default async function ProgramImportPage() {
           className="w-full rounded-xl border border-[color:var(--panel-border)] bg-zinc-950 px-3 py-3 font-mono text-xs leading-5 outline-none"
         />
         <details className="rounded-xl border border-[color:var(--panel-border)] p-3">
-          <summary className="cursor-pointer list-none text-sm font-black text-[color:var(--accent)]">
-            Need a plan first?
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-[color:var(--accent)]">
+            <span>Need a plan first?</span>
+            <CopyPromptButton text={createPlanPrompt} />
           </summary>
           <textarea
             readOnly
