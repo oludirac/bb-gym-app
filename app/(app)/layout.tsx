@@ -2,6 +2,14 @@ import { Dumbbell } from "lucide-react";
 import { BottomNav } from "@/components/bottom-nav";
 import { requireUser } from "@/lib/auth/session";
 
+function formatToday() {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    weekday: "short"
+  }).format(new Date());
+}
+
 export default async function AppLayout({
   children
 }: Readonly<{
@@ -10,6 +18,7 @@ export default async function AppLayout({
   const { profile, settings, user } = await requireUser();
   const displayName = profile?.display_name || user.email || "Account";
   const theme = settings?.theme === "light" ? "theme-light" : "theme-dark";
+  const today = formatToday();
 
   return (
     <div className={`${theme} mx-auto flex min-h-svh w-full max-w-md flex-col bg-[color:var(--background)] text-[color:var(--foreground)]`}>
@@ -21,7 +30,7 @@ export default async function AppLayout({
           <div className="min-w-0">
             <p className="truncate text-sm font-extrabold">BB Gym</p>
             <p className="truncate text-xs text-[color:var(--muted)]">
-              {displayName}
+              {displayName} - {today}
             </p>
           </div>
         </div>

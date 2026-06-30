@@ -39,6 +39,14 @@ function formatDayDate(value: string) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function formatTodayDate() {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+    weekday: "long"
+  }).format(new Date());
+}
+
 export default async function DashboardPage() {
   const { supabase } = await requireUser();
   const [activeWorkout, todayPlan] = await Promise.all([
@@ -61,11 +69,14 @@ export default async function DashboardPage() {
           isCalendar ? "Fixed weekdays" : "Next in order"
         }`
       : "No plan selected";
+  const todayDate = formatTodayDate();
 
   return (
     <div className="space-y-6">
       <header className="space-y-1">
-        <p className="text-sm font-bold text-[color:var(--accent)]">Today</p>
+        <p className="text-sm font-bold text-[color:var(--accent)]">
+          {todayDate}
+        </p>
         <h1 className="text-4xl font-black tracking-normal">Today</h1>
       </header>
 
