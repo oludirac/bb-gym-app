@@ -17,25 +17,70 @@ function formatValue(value: string | null | undefined) {
   return value ? value.replaceAll("_", " ") : "Not set";
 }
 
-function formatSetTarget(set: {
+type SetTarget = {
+  sort_order: number;
   target_reps_max: number | null;
   target_reps_min: number | null;
   target_weight_kg: number | null;
-}) {
-  const reps =
-    set.target_reps_min && set.target_reps_max
-      ? set.target_reps_min === set.target_reps_max
-        ? `${set.target_reps_min}`
-        : `${set.target_reps_min}-${set.target_reps_max}`
-      : set.target_reps_min || set.target_reps_max;
-  const weight =
-    set.target_weight_kg === null
-      ? null
-      : `${Number(set.target_weight_kg).toLocaleString(undefined, {
-          maximumFractionDigits: 1
-        })} kg`;
+};
 
-  return [weight, reps ? `${reps} reps` : null].filter(Boolean).join(" x ");
+function formatKg(value: number | null) {
+  if (value === null) {
+    return "no kg";
+  }
+
+  return `${Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 1
+  })}kg`;
+}
+
+function formatReps(min: number | null, max: number | null) {
+  if (min !== null && max !== null) {
+    return min === max ? `${min}` : `${min}-${max}`;
+  }
+
+  return `${min ?? max ?? "-"}`;
+}
+
+function samePrescription(a: SetTarget, b: SetTarget) {
+  return (
+    a.target_weight_kg === b.target_weight_kg &&
+    a.target_reps_min === b.target_reps_min &&
+    a.target_reps_max === b.target_reps_max
+  );
+}
+
+function groupedSetSummaries(sets: SetTarget[]) {
+  const summaries: string[] = [];
+  let index = 0;
+
+  while (index < sets.length) {
+    const first = sets[index];
+    let lastIndex = index;
+
+    while (
+      lastIndex + 1 < sets.length &&
+      samePrescription(first, sets[lastIndex + 1])
+    ) {
+      lastIndex += 1;
+    }
+
+    const last = sets[lastIndex];
+    const range =
+      first.sort_order === last.sort_order
+        ? `${first.sort_order}`
+        : `${first.sort_order}-${last.sort_order}`;
+
+    summaries.push(
+      `${range}: ${formatKg(first.target_weight_kg)} x ${formatReps(
+        first.target_reps_min,
+        first.target_reps_max
+      )}`
+    );
+    index = lastIndex + 1;
+  }
+
+  return summaries;
 }
 
 export default async function ProgramDetailPage({
@@ -164,13 +209,12 @@ export default async function ProgramDetailPage({
                         {exercise.notes ? ` - ${exercise.notes}` : ""}
                       </p>
                       <div className="mt-2 grid gap-1">
-                        {exercise.sets.map((set) => (
+                        {groupedSetSummaries(exercise.sets).map((summary, index) => (
                           <p
-                            key={set.id}
+                            key={`${summary}-${index}`}
                             className="text-xs text-[color:var(--muted)]"
                           >
-                            Set {set.sort_order}:{" "}
-                            {formatSetTarget(set) || "No target"}
+                            {summary}
                           </p>
                         ))}
                       </div>
