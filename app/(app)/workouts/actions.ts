@@ -204,7 +204,7 @@ export async function addWorkoutSet(formData: FormData) {
   }
 
   await supabase.from("workout_sets").insert({
-    completed_at: new Date().toISOString(),
+    completed_at: null,
     reps: copiedSet?.reps ?? null,
     rest_seconds: copiedSet?.rest_seconds ?? null,
     rir: copiedSet?.rir ?? null,
@@ -332,6 +332,7 @@ export async function finishWorkout(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/programs");
   revalidatePath("/programs/active");
+  revalidatePath("/progress");
   redirect(`/workouts/${workoutId}`);
 }
 

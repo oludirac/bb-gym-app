@@ -10,7 +10,8 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "dist/**",
-      "next-env.d.ts"
+      "next-env.d.ts",
+      "seed-exercises.ts"
     ]
   }
 ];

@@ -4,12 +4,17 @@ export type WorkoutSet = {
   completed_at: string | null;
   id: string;
   notes: string | null;
+  previous_reps: number | null;
+  previous_weight_kg: number | null;
   reps: number | null;
   rest_seconds: number | null;
   rir: number | null;
   rpe: number | null;
   set_type: string;
   sort_order: number;
+  target_reps_max: number | null;
+  target_reps_min: number | null;
+  target_weight_kg: number | null;
   weight_kg: number | null;
 };
 
@@ -26,6 +31,7 @@ export type Workout = {
   finished_at: string | null;
   id: string;
   name: string | null;
+  program_day_id: string | null;
   scheduled_for: string | null;
   started_at: string;
   status: string;
@@ -39,7 +45,18 @@ export type ExerciseOption = {
   name: string;
 };
 
-type RawWorkoutSet = WorkoutSet;
+type RawWorkoutSet = {
+  completed_at: string | null;
+  id: string;
+  notes: string | null;
+  reps: number | null;
+  rest_seconds: number | null;
+  rir: number | null;
+  rpe: number | null;
+  set_type: string;
+  sort_order: number;
+  weight_kg: number | null;
+};
 
 type RawWorkoutExercise = {
   exercise_id: string;
@@ -54,6 +71,7 @@ type RawWorkout = {
   finished_at: string | null;
   id: string;
   name: string | null;
+  program_day_id: string | null;
   scheduled_for: string | null;
   started_at: string;
   status: string;
@@ -61,10 +79,42 @@ type RawWorkout = {
   workout_exercises?: RawWorkoutExercise[] | null;
 };
 
+type RawProgramSetTarget = {
+  sort_order: number;
+  target_reps_max: number | null;
+  target_reps_min: number | null;
+  target_weight_kg: number | null;
+};
+
+type RawProgramExerciseTarget = {
+  exercise_id: string;
+  program_sets?: RawProgramSetTarget[] | null;
+  sort_order: number;
+};
+
+type RawPreviousWorkoutSet = {
+  completed_at: string | null;
+  reps: number | null;
+  sort_order: number;
+  weight_kg: number | null;
+};
+
+type RawPreviousWorkoutExercise = {
+  exercise_id: string;
+  sort_order: number;
+  workout_sets?: RawPreviousWorkoutSet[] | null;
+};
+
+type RawPreviousWorkout = {
+  started_at: string;
+  workout_exercises?: RawPreviousWorkoutExercise[] | null;
+};
+
 const workoutSelect = `
   id,
   name,
   status,
+  program_day_id,
   scheduled_for,
   started_at,
   finished_at,
@@ -99,6 +149,7 @@ function mapWorkout(raw: RawWorkout): Workout {
     finished_at: raw.finished_at,
     id: raw.id,
     name: raw.name,
+    program_day_id: raw.program_day_id,
     scheduled_for: raw.scheduled_for,
     started_at: raw.started_at,
     status: raw.status,
@@ -111,14 +162,204 @@ function mapWorkout(raw: RawWorkout): Workout {
         notes: exercise.notes,
         sets: sortByOrder(exercise.workout_sets ?? []).map((set) => ({
           ...set,
+          previous_reps: null,
+          previous_weight_kg: null,
           rir: set.rir === null ? null : Number(set.rir),
           rpe: set.rpe === null ? null : Number(set.rpe),
+          target_reps_max: null,
+          target_reps_min: null,
+          target_weight_kg: null,
           weight_kg: set.weight_kg === null ? null : Number(set.weight_kg)
         })),
         sort_order: exercise.sort_order
       })
     )
   };
+}
+
+function setContextKey(exerciseSortOrder: number, setSortOrder: number) {
+  return `${exerciseSortOrder}:${setSortOrder}`;
+}
+
+async function getProgramTargets(
+  supabase: SupabaseClient,
+  programDayId: string | null
+) {
+  if (!programDayId) {
+    return new Map<
+      string,
+      {
+        target_reps_max: number | null;
+        target_reps_min: number | null;
+        target_weight_kg: number | null;
+      }
+    >();
+  }
+
+  const { data, error } = await supabase
+    .from("program_exercises")
+    .select(
+      `
+        exercise_id,
+        sort_order,
+        program_sets (
+          sort_order,
+          target_reps_min,
+          target_reps_max,
+          target_weight_kg
+        )
+      `
+    )
+    .eq("program_day_id", programDayId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const targets = new Map<
+    string,
+    {
+      target_reps_max: number | null;
+      target_reps_min: number | null;
+      target_weight_kg: number | null;
+    }
+  >();
+
+  for (const exercise of (data ?? []) as RawProgramExerciseTarget[]) {
+    for (const set of exercise.program_sets ?? []) {
+      targets.set(setContextKey(exercise.sort_order, set.sort_order), {
+        target_reps_max: set.target_reps_max,
+        target_reps_min: set.target_reps_min,
+        target_weight_kg:
+          set.target_weight_kg === null ? null : Number(set.target_weight_kg)
+      });
+    }
+  }
+
+  return targets;
+}
+
+async function getPreviousSets(
+  supabase: SupabaseClient,
+  workout: Workout
+) {
+  const exerciseIds = [
+    ...new Set(workout.workoutExercises.map((exercise) => exercise.exercise_id))
+  ];
+
+  if (exerciseIds.length === 0) {
+    return new Map<
+      string,
+      Map<number, { previous_reps: number | null; previous_weight_kg: number | null }>
+    >();
+  }
+
+  const { data, error } = await supabase
+    .from("workouts")
+    .select(
+      `
+        started_at,
+        workout_exercises (
+          exercise_id,
+          sort_order,
+          workout_sets (
+            sort_order,
+            weight_kg,
+            reps,
+            completed_at
+          )
+        )
+      `
+    )
+    .eq("status", "completed")
+    .lt("started_at", workout.started_at)
+    .order("started_at", { ascending: false })
+    .limit(30);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const previousByExercise = new Map<
+    string,
+    Map<number, { previous_reps: number | null; previous_weight_kg: number | null }>
+  >();
+  const wanted = new Set(exerciseIds);
+
+  for (const previousWorkout of (data ?? []) as RawPreviousWorkout[]) {
+    for (const exercise of sortByOrder(
+      previousWorkout.workout_exercises ?? []
+    )) {
+      if (
+        !wanted.has(exercise.exercise_id) ||
+        previousByExercise.has(exercise.exercise_id)
+      ) {
+        continue;
+      }
+
+      const completedSets = sortByOrder(exercise.workout_sets ?? []).filter(
+        (set) => set.completed_at
+      );
+
+      if (completedSets.length === 0) {
+        continue;
+      }
+
+      previousByExercise.set(
+        exercise.exercise_id,
+        new Map(
+          completedSets.map((set) => [
+            set.sort_order,
+            {
+              previous_reps: set.reps,
+              previous_weight_kg:
+                set.weight_kg === null ? null : Number(set.weight_kg)
+            }
+          ])
+        )
+      );
+    }
+
+    if (previousByExercise.size === wanted.size) {
+      break;
+    }
+  }
+
+  return previousByExercise;
+}
+
+async function hydrateActiveWorkoutContext(
+  supabase: SupabaseClient,
+  workout: Workout
+) {
+  const [targets, previousSets] = await Promise.all([
+    getProgramTargets(supabase, workout.program_day_id),
+    getPreviousSets(supabase, workout)
+  ]);
+
+  return {
+    ...workout,
+    workoutExercises: workout.workoutExercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) => {
+        const target = targets.get(
+          setContextKey(exercise.sort_order, set.sort_order)
+        );
+        const previous = previousSets
+          .get(exercise.exercise_id)
+          ?.get(set.sort_order);
+
+        return {
+          ...set,
+          previous_reps: previous?.previous_reps ?? null,
+          previous_weight_kg: previous?.previous_weight_kg ?? null,
+          target_reps_max: target?.target_reps_max ?? null,
+          target_reps_min: target?.target_reps_min ?? null,
+          target_weight_kg: target?.target_weight_kg ?? null
+        };
+      })
+    }))
+  } satisfies Workout;
 }
 
 export async function getActiveWorkout(supabase: SupabaseClient) {
@@ -134,7 +375,9 @@ export async function getActiveWorkout(supabase: SupabaseClient) {
     throw new Error(error.message);
   }
 
-  return data ? mapWorkout(data as RawWorkout) : null;
+  return data
+    ? hydrateActiveWorkoutContext(supabase, mapWorkout(data as RawWorkout))
+    : null;
 }
 
 export async function getWorkoutDetail(

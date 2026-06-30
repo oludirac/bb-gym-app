@@ -23,8 +23,6 @@ import {
 import { formatWeekdays, weekdayOptions } from "@/lib/scheduling/weekdays";
 import { requireUser } from "@/lib/auth/session";
 
-const setTypes = ["warmup", "working", "drop", "failure"];
-
 type EditProgramPageProps = {
   params: Promise<{
     id: string;
@@ -47,19 +45,9 @@ function SetEditor({
         <input type="hidden" name="programId" value={programId} />
         <input type="hidden" name="setId" value={set.id} />
 
-        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-black">Set {set.sort_order}</p>
-          <select
-            name="setType"
-            defaultValue={set.set_type}
-            className="field-base min-h-10 text-sm capitalize"
-          >
-            {setTypes.map((setType) => (
-              <option key={setType} value={setType}>
-                {setType}
-              </option>
-            ))}
-          </select>
+          <input type="hidden" name="setType" value="working" />
           <FormSubmitButton
             pendingLabel="Saving..."
             className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950 disabled:cursor-wait disabled:opacity-70"
@@ -72,7 +60,7 @@ function SetEditor({
         <div className="grid grid-cols-3 gap-2">
           <label className="grid gap-1">
             <span className="text-[11px] font-black text-[color:var(--muted)]">
-              reps min
+              reps from
             </span>
             <input
               name="targetRepsMin"
@@ -85,7 +73,7 @@ function SetEditor({
           </label>
           <label className="grid gap-1">
             <span className="text-[11px] font-black text-[color:var(--muted)]">
-              reps max
+              reps to
             </span>
             <input
               name="targetRepsMax"
@@ -111,59 +99,6 @@ function SetEditor({
             />
           </label>
         </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              RPE
-            </span>
-            <input
-              name="targetRpe"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="10"
-              step="0.5"
-              defaultValue={set.target_rpe ?? ""}
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              RIR
-            </span>
-            <input
-              name="targetRir"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.5"
-              defaultValue={set.target_rir ?? ""}
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              rest
-            </span>
-            <input
-              name="restSeconds"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              step="5"
-              defaultValue={set.rest_seconds ?? ""}
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-        </div>
-
-        <input
-          name="notes"
-          defaultValue={set.notes ?? ""}
-          placeholder="Notes"
-          className="field-base w-full text-sm"
-        />
       </form>
 
       <form action={deleteProgramSet} className="mt-2">
@@ -277,13 +212,6 @@ function DayEditor({
             defaultValue={day.focus ?? ""}
             placeholder="Focus"
             className="field-base text-base"
-          />
-          <textarea
-            name="notes"
-            rows={2}
-            defaultValue={day.notes ?? ""}
-            placeholder="Notes"
-            className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3 py-3 text-base outline-none focus:border-[color:var(--accent)]"
           />
           <FormSubmitButton pendingLabel="Saving...">Save day</FormSubmitButton>
         </form>

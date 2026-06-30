@@ -1,9 +1,9 @@
 import Link from "next/link";
 import {
-  BarChart3,
   ChevronRight,
   Download,
   FileUp,
+  LibraryBig,
   LogOut,
   Scale,
   Settings,
@@ -16,14 +16,14 @@ import { FormSubmitButton } from "@/components/form-submit-button";
 import { requireUser } from "@/lib/auth/session";
 
 const moreItems = [
+  { href: "/exercises", icon: LibraryBig, label: "Exercises", meta: "Exercise list" },
   { href: "/templates", icon: TimerReset, label: "Routines", meta: "Saved sessions" },
   { href: "/bodyweight", icon: Scale, label: "Weight", meta: "Weigh-ins" },
   { href: "/goals", icon: Target, label: "Goals", meta: "Targets" },
-  { href: "/progress", icon: BarChart3, label: "Progress", meta: "Stats" },
   { href: "/import/programs", icon: FileUp, label: "Import", meta: "Plan CSV" },
   { href: "/export", icon: Download, label: "Export", meta: "Backups" },
   { href: "/install", icon: Smartphone, label: "Install", meta: "Home Screen" },
-  { href: "/settings", icon: Settings, label: "Settings", meta: "Units and rest" }
+  { href: "/settings", icon: Settings, label: "Settings", meta: "Name and units" }
 ];
 
 export default async function MorePage() {

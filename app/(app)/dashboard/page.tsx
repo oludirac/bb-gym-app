@@ -1,11 +1,11 @@
 import Link from "next/link";
 import {
+  BarChart3,
   CalendarDays,
   Dumbbell,
   Flame,
-  LibraryBig,
+  History,
   Play,
-  TimerReset,
   Trophy
 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
@@ -17,10 +17,10 @@ import { requireUser } from "@/lib/auth/session";
 import { weekdayLabel } from "@/lib/scheduling/weekdays";
 
 const quickActions = [
-  { href: "/workouts/active", icon: Dumbbell, label: "Workout", meta: "Log now" },
-  { href: "/exercises", icon: LibraryBig, label: "Exercises", meta: "Find lifts" },
-  { href: "/templates", icon: TimerReset, label: "Routines", meta: "Saved days" },
-  { href: "/programs", icon: Trophy, label: "Plans", meta: "Build one" }
+  { href: "/workouts/active", icon: Dumbbell, label: "Workout", meta: "Current" },
+  { href: "/progress", icon: BarChart3, label: "Progress", meta: "Stats" },
+  { href: "/programs", icon: Trophy, label: "Plans", meta: "Splits" },
+  { href: "/workouts", icon: History, label: "History", meta: "Finished" }
 ];
 
 function formatDate(value: string) {
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <header className="space-y-1">
         <p className="text-sm font-bold text-[color:var(--accent)]">Today</p>
-        <h1 className="text-4xl font-black tracking-normal">Train fast.</h1>
+        <h1 className="text-4xl font-black tracking-normal">Today</h1>
       </header>
 
       <section className="app-card overflow-hidden p-5">
@@ -195,7 +195,7 @@ export default async function DashboardPage() {
       ) : null}
 
       <section className="space-y-3">
-        <h2 className="text-lg font-black">Quick start</h2>
+        <h2 className="text-lg font-black">Shortcuts</h2>
         <div className="grid grid-cols-2 gap-3">
           {quickActions.map((action) => {
             const Icon = action.icon;

@@ -81,12 +81,8 @@ export default async function WorkoutDetailPage({
                     <span className="font-semibold">#{set.sort_order}</span>
                     <span>{set.weight_kg ?? "-"} kg</span>
                     <span>{set.reps ?? "-"} reps</span>
-                    <span className="capitalize">{set.set_type}</span>
+                    <span>{set.completed_at ? "done" : "-"}</span>
                   </div>
-                  <p className="text-xs text-[color:var(--muted)]">
-                    RPE {set.rpe ?? "-"} - RIR {set.rir ?? "-"} - Rest{" "}
-                    {set.rest_seconds ?? "-"}s
-                  </p>
                   {set.notes ? (
                     <p className="text-xs text-[color:var(--muted)]">
                       {set.notes}

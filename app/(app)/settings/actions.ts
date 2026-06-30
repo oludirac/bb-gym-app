@@ -17,6 +17,7 @@ export async function updateProfileSettings(formData: FormData) {
   const { supabase, user } = await requireUser();
   const displayName = fieldValue(formData, "displayName");
   const unitPreference = fieldValue(formData, "unitPreference");
+  const theme = fieldValue(formData, "theme");
   const defaultRestSecondsValue = fieldValue(formData, "defaultRestSeconds");
   const defaultRestSeconds = Number(defaultRestSecondsValue);
 
@@ -26,6 +27,10 @@ export async function updateProfileSettings(formData: FormData) {
 
   if (unitPreference !== "kg" && unitPreference !== "lb") {
     redirectWithError("Choose kg or lb.");
+  }
+
+  if (theme !== "dark" && theme !== "light") {
+    redirectWithError("Choose light or dark.");
   }
 
   if (!Number.isInteger(defaultRestSeconds) || defaultRestSeconds < 0) {
@@ -53,7 +58,7 @@ export async function updateProfileSettings(formData: FormData) {
       {
         user_id: user.id,
         default_rest_seconds: defaultRestSeconds,
-        theme: "system"
+        theme
       },
       {
         onConflict: "user_id"
@@ -65,6 +70,7 @@ export async function updateProfileSettings(formData: FormData) {
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/more");
   revalidatePath("/settings");
   redirect("/settings?message=Settings saved.");
 }

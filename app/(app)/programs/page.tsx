@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileUp, Pencil, Play, Plus, Trophy } from "lucide-react";
+import { FileUp, Play, Plus, Trophy } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { enrollProgram } from "@/app/(app)/programs/actions";
 import {
@@ -67,25 +67,12 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
       </dl>
 
       <div className="mt-4 grid gap-2">
-        <div className="grid grid-cols-2 gap-2">
-          <Link
-            href={`/programs/${program.id}`}
-            className="flex min-h-11 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
-          >
-            Open
-          </Link>
-          {!program.is_public ? (
-            <Link
-              href={`/programs/${program.id}/edit`}
-              className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
-            >
-              <Pencil aria-hidden="true" className="size-4" />
-              Edit
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
+        <Link
+          href={`/programs/${program.id}`}
+          className="flex min-h-11 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black"
+        >
+          Open
+        </Link>
         {!program.is_public ? (
           <form action={enrollProgram}>
             <input type="hidden" name="programId" value={program.id} />

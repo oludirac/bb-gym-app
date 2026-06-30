@@ -17,6 +17,27 @@ function formatValue(value: string | null | undefined) {
   return value ? value.replaceAll("_", " ") : "Not set";
 }
 
+function formatSetTarget(set: {
+  target_reps_max: number | null;
+  target_reps_min: number | null;
+  target_weight_kg: number | null;
+}) {
+  const reps =
+    set.target_reps_min && set.target_reps_max
+      ? set.target_reps_min === set.target_reps_max
+        ? `${set.target_reps_min}`
+        : `${set.target_reps_min}-${set.target_reps_max}`
+      : set.target_reps_min || set.target_reps_max;
+  const weight =
+    set.target_weight_kg === null
+      ? null
+      : `${Number(set.target_weight_kg).toLocaleString(undefined, {
+          maximumFractionDigits: 1
+        })} kg`;
+
+  return [weight, reps ? `${reps} reps` : null].filter(Boolean).join(" x ");
+}
+
 export default async function ProgramDetailPage({
   params
 }: ProgramDetailPageProps) {
@@ -148,13 +169,8 @@ export default async function ProgramDetailPage({
                             key={set.id}
                             className="text-xs text-[color:var(--muted)]"
                           >
-                            Set {set.sort_order}: {set.target_reps_min ?? "-"}
-                            {set.target_reps_max &&
-                            set.target_reps_max !== set.target_reps_min
-                              ? `-${set.target_reps_max}`
-                              : ""}{" "}
-                            reps, RPE {set.target_rpe ?? "-"}, rest{" "}
-                            {set.rest_seconds ?? "-"}s
+                            Set {set.sort_order}:{" "}
+                            {formatSetTarget(set) || "No target"}
                           </p>
                         ))}
                       </div>

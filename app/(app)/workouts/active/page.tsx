@@ -1,21 +1,10 @@
 import Link from "next/link";
-import {
-  Check,
-  Dumbbell,
-  Flag,
-  History,
-  Plus,
-  Repeat2,
-  Trash2,
-  X
-} from "lucide-react";
+import { Check, Dumbbell, Flag, History, Plus, Repeat2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   addExerciseToWorkout,
   addWorkoutSet,
-  deleteWorkoutSet,
   finishWorkout,
-  removeWorkoutExercise,
   saveWorkoutSet,
   startBlankWorkout
 } from "@/app/(app)/workouts/actions";
@@ -27,8 +16,6 @@ import {
 } from "@/lib/workouts/queries";
 import { requireUser } from "@/lib/auth/session";
 
-const setTypes = ["warmup", "working", "drop", "failure"];
-
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -38,138 +25,107 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
-function SetEditor({ set }: { set: WorkoutSet }) {
+function formatKg(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  return `${Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 1
+  })}kg`;
+}
+
+function formatTarget(set: WorkoutSet) {
+  const reps =
+    set.target_reps_min && set.target_reps_max
+      ? set.target_reps_min === set.target_reps_max
+        ? `${set.target_reps_min}`
+        : `${set.target_reps_min}-${set.target_reps_max}`
+      : set.target_reps_min || set.target_reps_max;
+  const weight = set.target_weight_kg ?? set.weight_kg;
+
+  if (!reps && weight === null) {
+    return "-";
+  }
+
+  return [weight === null ? null : formatKg(weight), reps ? `x${reps}` : null]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function formatPrevious(set: WorkoutSet) {
+  if (set.previous_reps === null && set.previous_weight_kg === null) {
+    return "-";
+  }
+
+  return `${formatKg(set.previous_weight_kg)} x${set.previous_reps ?? "-"}`;
+}
+
+function completedCount(exercise: WorkoutExercise) {
+  return exercise.sets.filter((set) => set.completed_at).length;
+}
+
+function SetRow({ set }: { set: WorkoutSet }) {
+  const isDone = Boolean(set.completed_at);
+
   return (
-    <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
-      <form action={saveWorkoutSet} className="space-y-3">
-        <input type="hidden" name="setId" value={set.id} />
-
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-black">Set {set.sort_order}</p>
-          <FormSubmitButton
-            pendingLabel="Saving..."
-            className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg bg-[color:var(--success)] px-3 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-          >
-            <Check aria-hidden="true" className="size-4" strokeWidth={3} />
-            Save
-          </FormSubmitButton>
-        </div>
-
-        <fieldset className="grid grid-cols-4 gap-1.5">
-          <legend className="sr-only">Set type</legend>
-          {setTypes.map((setType) => (
-            <label key={setType} className="relative">
-              <input
-                type="radio"
-                name="setType"
-                value={setType}
-                defaultChecked={set.set_type === setType}
-                className="peer sr-only"
-              />
-              <span className="flex min-h-9 items-center justify-center rounded-lg border border-[color:var(--panel-border)] px-2 text-[11px] font-black capitalize text-[color:var(--muted)] peer-checked:border-[color:var(--accent)] peer-checked:bg-[color:var(--accent)] peer-checked:text-zinc-950">
-                {setType === "working" ? "work" : setType}
-              </span>
-            </label>
-          ))}
-        </fieldset>
-
-        <div className="grid grid-cols-5 gap-2">
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              kg
-            </span>
-            <input
-              name="weightKg"
-              type="number"
-              inputMode="decimal"
-              step="0.5"
-              min="0"
-              defaultValue={set.weight_kg ?? ""}
-              className="field-base min-h-12 px-2 text-center text-base font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              reps
-            </span>
-            <input
-              name="reps"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              defaultValue={set.reps ?? ""}
-              className="field-base min-h-12 px-2 text-center text-base font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              RPE
-            </span>
-            <input
-              name="rpe"
-              type="number"
-              inputMode="decimal"
-              step="0.5"
-              min="0"
-              max="10"
-              defaultValue={set.rpe ?? ""}
-              className="field-base min-h-12 px-2 text-center text-base font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              RIR
-            </span>
-            <input
-              name="rir"
-              type="number"
-              inputMode="decimal"
-              step="0.5"
-              min="0"
-              defaultValue={set.rir ?? ""}
-              className="field-base min-h-12 px-2 text-center text-base font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              rest
-            </span>
-            <input
-              name="restSeconds"
-              type="number"
-              inputMode="numeric"
-              step="5"
-              min="0"
-              defaultValue={set.rest_seconds ?? ""}
-              className="field-base min-h-12 px-2 text-center text-base font-black"
-            />
-          </label>
-        </div>
-
+    <form
+      action={saveWorkoutSet}
+      className={`grid grid-cols-[2.25rem_minmax(3.75rem,1fr)_minmax(3.75rem,1fr)_4rem_3.5rem_2.75rem] items-center gap-1.5 rounded-xl border p-2 ${
+        isDone
+          ? "border-[color:var(--success)]/55 bg-emerald-500/10"
+          : "border-[color:var(--panel-border)] bg-[#0d1117]"
+      }`}
+    >
+      <input type="hidden" name="setId" value={set.id} />
+      <input type="hidden" name="setType" value="working" />
+      <span className="text-center text-sm font-black">{set.sort_order}</span>
+      <span className="truncate text-xs font-bold text-[color:var(--muted)]">
+        {formatPrevious(set)}
+      </span>
+      <span className="truncate text-xs font-black text-[color:var(--accent)]">
+        {formatTarget(set)}
+      </span>
+      <label>
+        <span className="sr-only">Weight kg</span>
         <input
-          name="notes"
-          defaultValue={set.notes ?? ""}
-          placeholder="Notes"
-          className="field-base w-full text-sm"
+          name="weightKg"
+          type="number"
+          inputMode="decimal"
+          step="0.5"
+          min="0"
+          defaultValue={set.weight_kg ?? set.target_weight_kg ?? ""}
+          className="field-base min-h-11 px-1 text-center text-sm font-black"
         />
-      </form>
-
-      <form action={deleteWorkoutSet} className="mt-2">
-        <input type="hidden" name="setId" value={set.id} />
-        <FormSubmitButton
-          pendingLabel="Deleting..."
-          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-[color:var(--danger)]/40 px-3 text-xs font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-        >
-          <Trash2 aria-hidden="true" className="size-3.5" />
-          Delete
-        </FormSubmitButton>
-      </form>
-    </div>
+      </label>
+      <label>
+        <span className="sr-only">Reps</span>
+        <input
+          name="reps"
+          type="number"
+          inputMode="numeric"
+          min="0"
+          defaultValue={
+            set.reps ?? set.target_reps_min ?? set.target_reps_max ?? ""
+          }
+          className="field-base min-h-11 px-1 text-center text-sm font-black"
+        />
+      </label>
+      <FormSubmitButton
+        pendingLabel="..."
+        className={`inline-flex size-11 items-center justify-center rounded-xl text-zinc-950 transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70 ${
+          isDone ? "bg-[color:var(--success)]" : "bg-[color:var(--accent)]"
+        }`}
+      >
+        <Check aria-hidden="true" className="size-5" strokeWidth={3} />
+      </FormSubmitButton>
+    </form>
   );
 }
 
 function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
   const lastSet = exercise.sets.at(-1);
+  const done = completedCount(exercise);
 
   return (
     <article className="app-card-flat overflow-hidden">
@@ -179,27 +135,23 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
             {exercise.exercise_name_snapshot}
           </h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            {exercise.sets.length} set{exercise.sets.length === 1 ? "" : "s"}
+            {done}/{exercise.sets.length} sets done
           </p>
         </div>
-        <form action={removeWorkoutExercise}>
-          <input
-            type="hidden"
-            name="workoutExerciseId"
-            value={exercise.id}
-          />
-          <FormSubmitButton
-            pendingLabel="Removing..."
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-          >
-            <X aria-hidden="true" className="size-4" />
-          </FormSubmitButton>
-        </form>
       </div>
 
-      <div className="space-y-3 p-3">
+      <div className="grid grid-cols-[2.25rem_minmax(3.75rem,1fr)_minmax(3.75rem,1fr)_4rem_3.5rem_2.75rem] gap-1.5 px-5 pt-3 text-[10px] font-black uppercase text-[color:var(--muted)]">
+        <span className="text-center">Set</span>
+        <span>Last</span>
+        <span>Target</span>
+        <span className="text-center">kg</span>
+        <span className="text-center">reps</span>
+        <span />
+      </div>
+
+      <div className="space-y-2 p-3">
         {exercise.sets.map((set) => (
-          <SetEditor key={set.id} set={set} />
+          <SetRow key={set.id} set={set} />
         ))}
       </div>
 
@@ -212,7 +164,7 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
           />
           <FormSubmitButton
             pendingLabel="Adding..."
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
             <Plus aria-hidden="true" className="size-4" />
             Add set
@@ -227,11 +179,11 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
           />
           <input type="hidden" name="copySetId" value={lastSet?.id ?? ""} />
           <FormSubmitButton
-            pendingLabel="Repeating..."
+            pendingLabel="Copying..."
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
             <Repeat2 aria-hidden="true" className="size-4" />
-            Repeat
+            Copy last
           </FormSubmitButton>
         </form>
       </div>
@@ -257,14 +209,25 @@ export default async function ActiveWorkoutPage() {
             No workout running
           </h1>
           <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-            Start from scratch and add lifts as you go.
+            Start today&apos;s planned workout from Today, or start a blank one.
           </p>
-          <form action={startBlankWorkout} className="mt-5">
-            <FormSubmitButton pendingLabel="Starting...">
-              <Plus aria-hidden="true" className="size-5" />
-              Start workout
-            </FormSubmitButton>
-          </form>
+          <div className="mt-5 grid gap-2">
+            <Link
+              href="/dashboard"
+              className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 text-base font-extrabold text-zinc-950"
+            >
+              Go to Today
+            </Link>
+            <form action={startBlankWorkout}>
+              <FormSubmitButton
+                pendingLabel="Starting..."
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-base font-extrabold"
+              >
+                <Plus aria-hidden="true" className="size-5" />
+                Blank workout
+              </FormSubmitButton>
+            </form>
+          </div>
         </section>
 
         <Link
@@ -278,6 +241,15 @@ export default async function ActiveWorkoutPage() {
     );
   }
 
+  const totalSets = activeWorkout.workoutExercises.reduce(
+    (total, exercise) => total + exercise.sets.length,
+    0
+  );
+  const doneSets = activeWorkout.workoutExercises.reduce(
+    (total, exercise) => total + completedCount(exercise),
+    0
+  );
+
   return (
     <div className="space-y-5 pb-32">
       <header className="app-card p-5">
@@ -288,15 +260,20 @@ export default async function ActiveWorkoutPage() {
           {activeWorkout.name ?? "Workout"}
         </h1>
         <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-          Started {formatDate(activeWorkout.started_at)}
+          Started {formatDate(activeWorkout.started_at)} - {doneSets}/{totalSets}{" "}
+          sets done
         </p>
       </header>
 
-      <form action={addExerciseToWorkout} className="app-card-flat p-3">
-        <input type="hidden" name="workoutId" value={activeWorkout.id} />
-        <div className="grid grid-cols-[1fr_auto] gap-2">
+      <details className="app-card-flat p-3">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black">
+          Add lift
+          <Plus aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
+        </summary>
+        <form action={addExerciseToWorkout} className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+          <input type="hidden" name="workoutId" value={activeWorkout.id} />
           <label className="grid gap-1">
-            <span className="sr-only">Add lift</span>
+            <span className="sr-only">Exercise</span>
             <select name="exerciseId" className="field-base text-base" required>
               {exerciseOptions.map((exercise) => (
                 <option key={exercise.id} value={exercise.id}>
@@ -308,20 +285,19 @@ export default async function ActiveWorkoutPage() {
           </label>
           <FormSubmitButton
             pendingLabel="Adding..."
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
-            <Plus aria-hidden="true" className="size-4" />
             Add
           </FormSubmitButton>
-        </div>
-      </form>
+        </form>
+      </details>
 
       <section className="space-y-4">
         {activeWorkout.workoutExercises.length === 0 ? (
           <div className="app-card-flat p-4">
             <h2 className="text-base font-black">No lifts yet</h2>
             <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-              Pick the first lift above.
+              Add the first lift above.
             </p>
           </div>
         ) : (

@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Dumbbell, Flame, LibraryBig, MoreHorizontal, Trophy } from "lucide-react";
+import { BarChart3, Dumbbell, Flame, MoreHorizontal, Trophy } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/dashboard", icon: Flame, label: "Today" },
   { href: "/workouts/active", icon: Dumbbell, label: "Workout" },
-  { href: "/exercises", icon: LibraryBig, label: "Exercises" },
+  { href: "/progress", icon: BarChart3, label: "Progress" },
   { href: "/programs", icon: Trophy, label: "Plans" },
   { href: "/more", icon: MoreHorizontal, label: "More" }
 ];
@@ -19,6 +19,10 @@ function isActive(pathname: string, href: string) {
 
   if (href === "/more") {
     return pathname === "/more";
+  }
+
+  if (href === "/workouts/active") {
+    return pathname.startsWith("/workouts");
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
