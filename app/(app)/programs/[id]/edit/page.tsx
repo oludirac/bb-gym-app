@@ -10,6 +10,7 @@ import {
   deleteProgramDay,
   deleteProgramExercise,
   deleteProgramSet,
+  moveProgramExercise,
   moveProgramDay,
   removeProgram,
   updateProgramBasics,
@@ -267,9 +268,13 @@ function groupedSetSummaries(sets: ProgramSet[], exerciseCategory: string) {
 
 function ExerciseCard({
   exercise,
+  isFirst,
+  isLast,
   programId
 }: {
   exercise: ProgramExercise;
+  isFirst: boolean;
+  isLast: boolean;
   programId: string;
 }) {
   const setSummaries = groupedSetSummaries(
@@ -294,16 +299,44 @@ function ExerciseCard({
             )}
           </div>
         </div>
-        <form action={deleteProgramExercise}>
-          <input type="hidden" name="programId" value={programId} />
-          <input type="hidden" name="programExerciseId" value={exercise.id} />
-          <FormSubmitButton
-            pendingLabel="Removing..."
-            className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 disabled:cursor-wait disabled:opacity-70"
-          >
-            <Trash2 aria-hidden="true" className="size-4" />
-          </FormSubmitButton>
-        </form>
+        <div className="flex shrink-0 items-center gap-2">
+          <form action={moveProgramExercise}>
+            <input type="hidden" name="programId" value={programId} />
+            <input type="hidden" name="programExerciseId" value={exercise.id} />
+            <input type="hidden" name="direction" value="up" />
+            <FormSubmitButton
+              pendingLabel="..."
+              className="inline-flex size-10 items-center justify-center rounded-lg border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={isFirst}
+            >
+              <ArrowUp aria-hidden="true" className="size-4" />
+              <span className="sr-only">Move exercise up</span>
+            </FormSubmitButton>
+          </form>
+          <form action={moveProgramExercise}>
+            <input type="hidden" name="programId" value={programId} />
+            <input type="hidden" name="programExerciseId" value={exercise.id} />
+            <input type="hidden" name="direction" value="down" />
+            <FormSubmitButton
+              pendingLabel="..."
+              className="inline-flex size-10 items-center justify-center rounded-lg border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={isLast}
+            >
+              <ArrowDown aria-hidden="true" className="size-4" />
+              <span className="sr-only">Move exercise down</span>
+            </FormSubmitButton>
+          </form>
+          <form action={deleteProgramExercise}>
+            <input type="hidden" name="programId" value={programId} />
+            <input type="hidden" name="programExerciseId" value={exercise.id} />
+            <FormSubmitButton
+              pendingLabel="Removing..."
+              className="inline-flex size-10 items-center justify-center rounded-lg border border-[color:var(--danger)]/40 text-red-200 disabled:cursor-wait disabled:opacity-70"
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+            </FormSubmitButton>
+          </form>
+        </div>
       </div>
 
       <details className="border-t border-[color:var(--panel-border)]">
@@ -444,10 +477,12 @@ function DayEditor({
         />
 
         <div className="space-y-3">
-          {day.exercises.map((exercise) => (
+          {day.exercises.map((exercise, index) => (
             <ExerciseCard
               key={exercise.id}
               exercise={exercise}
+              isFirst={index === 0}
+              isLast={index === day.exercises.length - 1}
               programId={programId}
             />
           ))}

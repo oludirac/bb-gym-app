@@ -147,6 +147,42 @@ async function normalizeProgramWeekDayNumbers(
   );
 }
 
+async function normalizeProgramExerciseSortOrders(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  programDayId: string
+) {
+  const { data } = await supabase
+    .from("program_exercises")
+    .select("id, sort_order")
+    .eq("program_day_id", programDayId)
+    .order("sort_order", { ascending: true });
+  const exercises = data ?? [];
+
+  if (exercises.length === 0) {
+    return;
+  }
+
+  const offset = exercises.length + 1000;
+
+  await Promise.all(
+    exercises.map((exercise, index) =>
+      supabase
+        .from("program_exercises")
+        .update({ sort_order: offset + index + 1 })
+        .eq("id", exercise.id)
+    )
+  );
+
+  await Promise.all(
+    exercises.map((exercise, index) =>
+      supabase
+        .from("program_exercises")
+        .update({ sort_order: index + 1 })
+        .eq("id", exercise.id)
+    )
+  );
+}
+
 async function firstProgramWeekId(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   programId: string
@@ -523,6 +559,8 @@ export async function addProgramExercise(formData: FormData) {
     );
   }
 
+  await normalizeProgramExerciseSortOrders(supabase, programDayId);
+
   revalidatePath(`/programs/${programId}/edit`);
   redirect(`/programs/${programId}/edit`);
 }
@@ -533,14 +571,100 @@ export async function deleteProgramExercise(formData: FormData) {
   const programExerciseId = fieldValue(formData, "programExerciseId");
 
   if (programExerciseId) {
+    const { data: programExercise } = await supabase
+      .from("program_exercises")
+      .select("program_day_id")
+      .eq("id", programExerciseId)
+      .maybeSingle();
+
     await supabase
       .from("program_exercises")
       .delete()
       .eq("id", programExerciseId);
+
+    if (programExercise?.program_day_id) {
+      await normalizeProgramExerciseSortOrders(
+        supabase,
+        programExercise.program_day_id
+      );
+    }
   }
 
   revalidatePath(`/programs/${programId}/edit`);
   redirect(programId ? `/programs/${programId}/edit` : "/programs");
+}
+
+export async function moveProgramExercise(formData: FormData) {
+  const { supabase } = await requireUser();
+  const programId = fieldValue(formData, "programId");
+  const programExerciseId = fieldValue(formData, "programExerciseId");
+  const direction = fieldValue(formData, "direction");
+
+  if (!programId || !programExerciseId || !["up", "down"].includes(direction)) {
+    redirect(programId ? `/programs/${programId}/edit` : "/programs");
+  }
+
+  const program = await getProgramDetail(supabase, programId);
+
+  if (!program || program.is_public) {
+    redirect("/programs");
+  }
+
+  const exercises = program.weeks
+    .flatMap((week) => week.days)
+    .flatMap((day) =>
+      day.exercises.map((exercise) => ({
+        ...exercise,
+        dayId: day.id
+      }))
+    );
+  const current = exercises.find(
+    (exercise) => exercise.id === programExerciseId
+  );
+
+  if (!current) {
+    redirect(`/programs/${programId}/edit`);
+  }
+
+  const dayExercises = exercises
+    .filter((exercise) => exercise.dayId === current.dayId)
+    .sort((a, b) => a.sort_order - b.sort_order);
+  const currentIndex = dayExercises.findIndex(
+    (exercise) => exercise.id === programExerciseId
+  );
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  const target = dayExercises[targetIndex];
+
+  if (!target) {
+    redirect(`/programs/${programId}/edit`);
+  }
+
+  const temporarySortOrder =
+    Math.max(...dayExercises.map((exercise) => exercise.sort_order)) + 1000;
+
+  await supabase
+    .from("program_exercises")
+    .update({ sort_order: temporarySortOrder })
+    .eq("id", current.id);
+
+  await supabase
+    .from("program_exercises")
+    .update({ sort_order: current.sort_order })
+    .eq("id", target.id);
+
+  await supabase
+    .from("program_exercises")
+    .update({ sort_order: target.sort_order })
+    .eq("id", current.id);
+
+  await normalizeProgramExerciseSortOrders(supabase, current.dayId);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/programs");
+  revalidatePath(`/programs/${programId}`);
+  revalidatePath(`/programs/${programId}/edit`);
+  revalidatePath("/programs/active");
+  redirect(`/programs/${programId}/edit`);
 }
 
 export async function addProgramSet(formData: FormData) {
