@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
-import { ProgramExercisePicker } from "@/components/program-exercise-picker";
+import { LazyProgramExercisePicker } from "@/components/lazy-program-exercise-picker";
 import {
   addProgramDay,
   addProgramExercise,
@@ -436,7 +436,7 @@ function DayEditor({
           </form>
         </article>
 
-        <ProgramExercisePicker
+        <LazyProgramExercisePicker
           action={addProgramExercise}
           exerciseOptions={exerciseOptions}
           programDayId={day.id}
