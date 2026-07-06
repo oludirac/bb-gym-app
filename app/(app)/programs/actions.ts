@@ -350,6 +350,65 @@ export async function deleteProgramDay(formData: FormData) {
   redirect(programId ? `/programs/${programId}/edit` : "/programs");
 }
 
+export async function moveProgramDay(formData: FormData) {
+  const { supabase } = await requireUser();
+  const programId = fieldValue(formData, "programId");
+  const programDayId = fieldValue(formData, "programDayId");
+  const direction = fieldValue(formData, "direction");
+
+  if (!programId || !programDayId || !["up", "down"].includes(direction)) {
+    redirect(programId ? `/programs/${programId}/edit` : "/programs");
+  }
+
+  const program = await getProgramDetail(supabase, programId);
+
+  if (!program || program.is_public) {
+    redirect("/programs");
+  }
+
+  const days = program.weeks
+    .flatMap((week) =>
+      week.days.map((day) => ({
+        ...day,
+        weekId: week.id
+      }))
+    )
+    .sort((a, b) => a.day_number - b.day_number);
+  const currentIndex = days.findIndex((day) => day.id === programDayId);
+  const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+  const current = days[currentIndex];
+  const target = days[targetIndex];
+
+  if (!current || !target || current.weekId !== target.weekId) {
+    redirect(`/programs/${programId}/edit`);
+  }
+
+  const temporaryDayNumber =
+    Math.max(...days.map((day) => day.day_number)) + 1000;
+
+  await supabase
+    .from("program_days")
+    .update({ day_number: temporaryDayNumber })
+    .eq("id", current.id);
+
+  await supabase
+    .from("program_days")
+    .update({ day_number: current.day_number })
+    .eq("id", target.id);
+
+  await supabase
+    .from("program_days")
+    .update({ day_number: target.day_number })
+    .eq("id", current.id);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/programs");
+  revalidatePath(`/programs/${programId}`);
+  revalidatePath(`/programs/${programId}/edit`);
+  revalidatePath("/programs/active");
+  redirect(`/programs/${programId}/edit`);
+}
+
 export async function addProgramExercise(formData: FormData) {
   const { supabase } = await requireUser();
   const programId = fieldValue(formData, "programId");

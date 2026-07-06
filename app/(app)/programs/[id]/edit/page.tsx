@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { ProgramExercisePicker } from "@/components/program-exercise-picker";
 import {
@@ -10,6 +10,7 @@ import {
   deleteProgramDay,
   deleteProgramExercise,
   deleteProgramSet,
+  moveProgramDay,
   removeProgram,
   updateProgramBasics,
   updateProgramDay,
@@ -337,11 +338,15 @@ function ExerciseCard({
 function DayEditor({
   day,
   exerciseOptions,
+  isFirst,
+  isLast,
   initiallyOpen,
   programId
 }: {
   day: ProgramDay;
   exerciseOptions: Awaited<ReturnType<typeof getExerciseOptions>>;
+  isFirst: boolean;
+  isLast: boolean;
   initiallyOpen: boolean;
   programId: string;
 }) {
@@ -357,7 +362,35 @@ function DayEditor({
             | {formatWeekdays(day.schedule_weekdays)}
           </p>
         </div>
-        <span className="app-chip shrink-0">Edit</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <form action={moveProgramDay}>
+            <input type="hidden" name="programId" value={programId} />
+            <input type="hidden" name="programDayId" value={day.id} />
+            <input type="hidden" name="direction" value="up" />
+            <FormSubmitButton
+              pendingLabel="..."
+              className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={isFirst}
+            >
+              <ArrowUp aria-hidden="true" className="size-4" />
+              <span className="sr-only">Move day up</span>
+            </FormSubmitButton>
+          </form>
+          <form action={moveProgramDay}>
+            <input type="hidden" name="programId" value={programId} />
+            <input type="hidden" name="programDayId" value={day.id} />
+            <input type="hidden" name="direction" value="down" />
+            <FormSubmitButton
+              pendingLabel="..."
+              className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35"
+              disabled={isLast}
+            >
+              <ArrowDown aria-hidden="true" className="size-4" />
+              <span className="sr-only">Move day down</span>
+            </FormSubmitButton>
+          </form>
+          <span className="app-chip hidden shrink-0 sm:inline-flex">Edit</span>
+        </div>
       </summary>
 
       <section className="space-y-3 border-t border-[color:var(--panel-border)] p-3">
@@ -564,6 +597,8 @@ export default async function EditProgramPage({
             key={day.id}
             day={day}
             exerciseOptions={exerciseOptions}
+            isFirst={index === 0}
+            isLast={index === days.length - 1}
             initiallyOpen={index === 0}
             programId={program.id}
           />

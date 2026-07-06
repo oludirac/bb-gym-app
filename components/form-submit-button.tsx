@@ -5,12 +5,14 @@ import { useFormStatus } from "react-dom";
 type FormSubmitButtonProps = {
   children: React.ReactNode;
   className?: string;
+  disabled?: boolean;
   pendingLabel: string;
 };
 
 export function FormSubmitButton({
   children,
   className,
+  disabled = false,
   pendingLabel
 }: FormSubmitButtonProps) {
   const { pending } = useFormStatus();
@@ -21,8 +23,8 @@ export function FormSubmitButton({
   return (
     <button
       type="submit"
-      disabled={pending}
-      aria-disabled={pending}
+      disabled={pending || disabled}
+      aria-disabled={pending || disabled}
       className={buttonClassName}
     >
       {pending ? pendingLabel : children}
