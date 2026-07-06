@@ -13,23 +13,36 @@ My Imported Plan,Pull,Lat Pulldown,back,1,8,10,45`;
 const csvPrompt = `Turn the workout plan below into a CSV for my gym app.
 
 Use exactly these columns:
-plan_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
 
 Rules:
+- Return only raw CSV. No markdown, no code fence, no explanation.
 - One row per set.
+- Use the same program_name on every row.
+- day_name can be simple names like Push, Pull, Legs, Upper, Lower, Full Body.
+- set_number starts at 1 for each exercise.
 - category must be one of: chest, back, shoulders, biceps, triceps, quads, hamstrings, glutes, calves, core, cardio, mobility, full_body.
+- Pick the category from the main body part trained by the exercise, not from the split name.
 - Use kg only.
 - If weight is unknown, leave weight_kg blank.
 - Use simple exercise names.
-- Return only CSV, no explanation.
+- Use double progression: give each lift a reps_min and reps_max range.
+- Repeat the same starting weight for sets that should progress together.
+- If a top set/back-off set uses different reps or weight, make that exact set its own row.
 
 Workout plan:
 [paste workout here]`;
 
 const createPlanPrompt = `Ask me up to 5 quick questions, then create a simple gym plan CSV using these columns:
-plan_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
 
-Keep it practical, use common exercises, and return only CSV when done.`;
+Rules:
+- Return only raw CSV when done.
+- Use kg only.
+- category must be one of: chest, back, shoulders, biceps, triceps, quads, hamstrings, glutes, calves, core, cardio, mobility, full_body.
+- Use double progression with rep ranges.
+- Use one row per set.
+- Keep it practical and use common exercises.`;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -61,7 +74,8 @@ export default async function ProgramImportPage() {
             Plan CSV
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Paste a plan CSV. New exercise names become your custom exercises.
+            Paste a plan CSV. Matching exercises are reused; new exercise names
+            become your private custom exercises.
           </p>
         </header>
       </div>

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { getProgramDetail } from "@/lib/programs/queries";
 
+const doubleProgressionStepKg = 2.5;
+
 function fieldValue(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -110,6 +112,89 @@ async function advanceProgramEnrollment(
     .from("user_settings")
     .update({ active_program_enrollment_id: null })
     .eq("active_program_enrollment_id", enrollmentId);
+}
+
+type WorkoutExerciseForProgression = {
+  sort_order: number;
+  workout_sets:
+    | {
+        completed_at: string | null;
+        reps: number | null;
+        sort_order: number;
+        weight_kg: number | null;
+      }[]
+    | null;
+};
+
+async function applyDoubleProgression(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  programDayId: string,
+  workoutExercises: WorkoutExerciseForProgression[]
+) {
+  const { data: programExercises } = await supabase
+    .from("program_exercises")
+    .select(
+      `
+        id,
+        sort_order,
+        program_sets (
+          id,
+          set_type,
+          sort_order,
+          target_reps_max,
+          target_weight_kg
+        )
+      `
+    )
+    .eq("program_day_id", programDayId);
+
+  const workoutExerciseByOrder = new Map(
+    workoutExercises.map((exercise) => [exercise.sort_order, exercise])
+  );
+  const updates: PromiseLike<unknown>[] = [];
+
+  for (const programExercise of programExercises ?? []) {
+    const workoutExercise = workoutExerciseByOrder.get(programExercise.sort_order);
+
+    if (!workoutExercise) {
+      continue;
+    }
+
+    const workoutSetByOrder = new Map(
+      (workoutExercise.workout_sets ?? []).map((set) => [set.sort_order, set])
+    );
+
+    for (const programSet of programExercise.program_sets ?? []) {
+      const workoutSet = workoutSetByOrder.get(programSet.sort_order);
+      const targetWeight =
+        programSet.target_weight_kg === null
+          ? null
+          : Number(programSet.target_weight_kg);
+
+      if (
+        programSet.set_type !== "working" ||
+        targetWeight === null ||
+        programSet.target_reps_max === null ||
+        !workoutSet?.completed_at ||
+        workoutSet.reps === null ||
+        workoutSet.reps < programSet.target_reps_max
+      ) {
+        continue;
+      }
+
+      updates.push(
+        supabase
+          .from("program_sets")
+          .update({
+            target_weight_kg: targetWeight + doubleProgressionStepKg
+          })
+          .eq("id", programSet.id)
+          .then(() => undefined)
+      );
+    }
+  }
+
+  await Promise.all(updates);
 }
 
 export async function startBlankWorkout() {
@@ -288,7 +373,7 @@ export async function finishWorkout(formData: FormData) {
 
   const { data: exercises } = await supabase
     .from("workout_exercises")
-    .select("id, workout_sets(weight_kg, reps, completed_at)")
+    .select("id, sort_order, workout_sets(sort_order, weight_kg, reps, completed_at)")
     .eq("workout_id", workoutId);
 
   const totalVolumeKg = (exercises ?? []).reduce((total, exercise) => {
@@ -320,6 +405,12 @@ export async function finishWorkout(formData: FormData) {
     .eq("id", workoutId);
 
   if (workoutMeta?.program_enrollment_id && workoutMeta.program_day_id) {
+    await applyDoubleProgression(
+      supabase,
+      workoutMeta.program_day_id,
+      (exercises ?? []) as WorkoutExerciseForProgression[]
+    );
+
     await advanceProgramEnrollment(
       supabase,
       workoutMeta.program_enrollment_id,

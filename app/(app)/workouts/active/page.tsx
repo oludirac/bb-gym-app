@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  Check,
   Dumbbell,
   Flag,
   History,
@@ -9,6 +8,7 @@ import {
   Trash2
 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
+import { RestTimer, RestTimerSubmitButton } from "@/components/rest-timer";
 import {
   addExerciseToWorkout,
   addWorkoutSet,
@@ -39,8 +39,15 @@ function completedCount(exercise: WorkoutExercise) {
   return exercise.sets.filter((set) => set.completed_at).length;
 }
 
-function SetRow({ set }: { set: WorkoutSet }) {
+function SetRow({
+  defaultRestSeconds,
+  set
+}: {
+  defaultRestSeconds: number;
+  set: WorkoutSet;
+}) {
   const isDone = Boolean(set.completed_at);
+  const restSeconds = set.rest_seconds ?? defaultRestSeconds;
 
   return (
     <form
@@ -53,6 +60,7 @@ function SetRow({ set }: { set: WorkoutSet }) {
     >
       <input type="hidden" name="setId" value={set.id} />
       <input type="hidden" name="setType" value="working" />
+      <input type="hidden" name="restSeconds" value={restSeconds} />
       <div className="grid min-h-11 place-items-center rounded-lg border border-[color:var(--panel-border)] text-sm font-black">
         {set.sort_order}
       </div>
@@ -85,20 +93,18 @@ function SetRow({ set }: { set: WorkoutSet }) {
           className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
         />
       </label>
-      <FormSubmitButton
-        pendingLabel="Saving..."
-        className={`col-span-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-black text-zinc-950 transition active:scale-[0.96] disabled:cursor-wait disabled:opacity-70 ${
-          isDone ? "bg-[color:var(--success)]" : "bg-[color:var(--accent)]"
-        }`}
-      >
-        <Check aria-hidden="true" className="size-5" strokeWidth={3} />
-        {isDone ? "Done" : "Save set"}
-      </FormSubmitButton>
+      <RestTimerSubmitButton isDone={isDone} restSeconds={restSeconds} />
     </form>
   );
 }
 
-function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
+function WorkoutExerciseCard({
+  defaultRestSeconds,
+  exercise
+}: {
+  defaultRestSeconds: number;
+  exercise: WorkoutExercise;
+}) {
   const lastSet = exercise.sets.at(-1);
   const done = completedCount(exercise);
 
@@ -130,7 +136,11 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
 
       <div className="space-y-2 p-3">
         {exercise.sets.map((set) => (
-          <SetRow key={set.id} set={set} />
+          <SetRow
+            key={set.id}
+            defaultRestSeconds={defaultRestSeconds}
+            set={set}
+          />
         ))}
       </div>
 
@@ -171,11 +181,12 @@ function WorkoutExerciseCard({ exercise }: { exercise: WorkoutExercise }) {
 }
 
 export default async function ActiveWorkoutPage() {
-  const { supabase } = await requireUser();
+  const { settings, supabase } = await requireUser();
   const [activeWorkout, exerciseOptions] = await Promise.all([
     getActiveWorkout(supabase),
     getExerciseOptions(supabase)
   ]);
+  const defaultRestSeconds = settings?.default_rest_seconds ?? 120;
 
   if (!activeWorkout) {
     return (
@@ -244,6 +255,8 @@ export default async function ActiveWorkoutPage() {
         </p>
       </header>
 
+      <RestTimer defaultRestSeconds={defaultRestSeconds} />
+
       <details className="app-card-flat p-3">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black">
           Add lift
@@ -281,7 +294,11 @@ export default async function ActiveWorkoutPage() {
           </div>
         ) : (
           activeWorkout.workoutExercises.map((exercise) => (
-            <WorkoutExerciseCard key={exercise.id} exercise={exercise} />
+            <WorkoutExerciseCard
+              key={exercise.id}
+              defaultRestSeconds={defaultRestSeconds}
+              exercise={exercise}
+            />
           ))
         )}
       </section>
