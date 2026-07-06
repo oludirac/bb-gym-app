@@ -20,12 +20,13 @@ const requiredColumns = [
   "distance_km",
   "intensity"
 ];
-const requiredValueColumns = requiredColumns.filter(
-  (column) =>
-    !["weight_kg", "duration_minutes", "distance_km", "intensity"].includes(
-      column
-    )
-);
+const requiredValueColumns = [
+  "program_name",
+  "day_name",
+  "exercise_name",
+  "category",
+  "set_number"
+];
 
 const allowedProgramCategories = new Set([
   "strength",
