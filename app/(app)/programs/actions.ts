@@ -111,6 +111,42 @@ async function nextDayNumber(
   return ((data as { day_number?: number } | null)?.day_number ?? 0) + 1;
 }
 
+async function normalizeProgramWeekDayNumbers(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  programWeekId: string
+) {
+  const { data } = await supabase
+    .from("program_days")
+    .select("id, day_number")
+    .eq("program_week_id", programWeekId)
+    .order("day_number", { ascending: true });
+  const days = data ?? [];
+
+  if (days.length === 0) {
+    return;
+  }
+
+  const offset = days.length + 1000;
+
+  await Promise.all(
+    days.map((day, index) =>
+      supabase
+        .from("program_days")
+        .update({ day_number: offset + index + 1 })
+        .eq("id", day.id)
+    )
+  );
+
+  await Promise.all(
+    days.map((day, index) =>
+      supabase
+        .from("program_days")
+        .update({ day_number: index + 1 })
+        .eq("id", day.id)
+    )
+  );
+}
+
 async function firstProgramWeekId(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   programId: string
@@ -333,6 +369,8 @@ export async function addProgramDay(formData: FormData) {
     program_week_id: weekId
   });
 
+  await normalizeProgramWeekDayNumbers(supabase, weekId);
+
   revalidatePath(`/programs/${programId}/edit`);
   redirect(`/programs/${programId}/edit`);
 }
@@ -343,7 +381,17 @@ export async function deleteProgramDay(formData: FormData) {
   const programDayId = fieldValue(formData, "programDayId");
 
   if (programDayId) {
+    const { data: day } = await supabase
+      .from("program_days")
+      .select("program_week_id")
+      .eq("id", programDayId)
+      .maybeSingle();
+
     await supabase.from("program_days").delete().eq("id", programDayId);
+
+    if (day?.program_week_id) {
+      await normalizeProgramWeekDayNumbers(supabase, day.program_week_id);
+    }
   }
 
   revalidatePath(`/programs/${programId}/edit`);
@@ -400,6 +448,8 @@ export async function moveProgramDay(formData: FormData) {
     .from("program_days")
     .update({ day_number: target.day_number })
     .eq("id", current.id);
+
+  await normalizeProgramWeekDayNumbers(supabase, current.weekId);
 
   revalidatePath("/dashboard");
   revalidatePath("/programs");
