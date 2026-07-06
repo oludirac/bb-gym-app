@@ -21,6 +21,16 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatDuration(seconds: number | null) {
+  if (seconds === null) {
+    return "-";
+  }
+
+  return `${Number(seconds / 60).toLocaleString(undefined, {
+    maximumFractionDigits: 1
+  })} min`;
+}
+
 export default async function WorkoutDetailPage({
   params
 }: WorkoutDetailPageProps) {
@@ -77,12 +87,21 @@ export default async function WorkoutDetailPage({
                   key={set.id}
                   className="grid gap-1 rounded-md bg-zinc-950 p-3 text-sm"
                 >
-                  <div className="grid grid-cols-4 gap-2">
-                    <span className="font-semibold">#{set.sort_order}</span>
-                    <span>{set.weight_kg ?? "-"} kg</span>
-                    <span>{set.reps ?? "-"} reps</span>
-                    <span>{set.completed_at ? "done" : "-"}</span>
-                  </div>
+                  {exercise.exercise_category === "cardio" ? (
+                    <div className="grid grid-cols-4 gap-2">
+                      <span className="font-semibold">#{set.sort_order}</span>
+                      <span>{formatDuration(set.duration_seconds)}</span>
+                      <span>{set.distance_km ?? "-"} km</span>
+                      <span>{set.intensity ?? (set.completed_at ? "done" : "-")}</span>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-2">
+                      <span className="font-semibold">#{set.sort_order}</span>
+                      <span>{set.weight_kg ?? "-"} kg</span>
+                      <span>{set.reps ?? "-"} reps</span>
+                      <span>{set.completed_at ? "done" : "-"}</span>
+                    </div>
+                  )}
                   {set.notes ? (
                     <p className="text-xs text-[color:var(--muted)]">
                       {set.notes}

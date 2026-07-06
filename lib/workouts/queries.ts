@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type WorkoutSet = {
   completed_at: string | null;
+  distance_km: number | null;
+  duration_seconds: number | null;
   id: string;
+  intensity: string | null;
   notes: string | null;
   previous_reps: number | null;
   previous_weight_kg: number | null;
@@ -12,6 +15,9 @@ export type WorkoutSet = {
   rpe: number | null;
   set_type: string;
   sort_order: number;
+  target_distance_km: number | null;
+  target_duration_seconds: number | null;
+  target_intensity: string | null;
   target_reps_max: number | null;
   target_reps_min: number | null;
   target_weight_kg: number | null;
@@ -19,6 +25,7 @@ export type WorkoutSet = {
 };
 
 export type WorkoutExercise = {
+  exercise_category: string;
   exercise_id: string;
   exercise_name_snapshot: string;
   id: string;
@@ -48,7 +55,10 @@ export type ExerciseOption = {
 
 type RawWorkoutSet = {
   completed_at: string | null;
+  distance_km: number | null;
+  duration_seconds: number | null;
   id: string;
+  intensity: string | null;
   notes: string | null;
   reps: number | null;
   rest_seconds: number | null;
@@ -61,6 +71,14 @@ type RawWorkoutSet = {
 
 type RawWorkoutExercise = {
   exercise_id: string;
+  exercises:
+    | {
+        category: string;
+      }
+    | {
+        category: string;
+      }[]
+    | null;
   exercise_name_snapshot: string;
   id: string;
   notes: string | null;
@@ -82,6 +100,9 @@ type RawWorkout = {
 
 type RawProgramSetTarget = {
   sort_order: number;
+  target_distance_km: number | null;
+  target_duration_seconds: number | null;
+  target_intensity: string | null;
   target_reps_max: number | null;
   target_reps_min: number | null;
   target_weight_kg: number | null;
@@ -123,6 +144,9 @@ const workoutSelect = `
   workout_exercises (
     id,
     exercise_id,
+    exercises (
+      category
+    ),
     exercise_name_snapshot,
     sort_order,
     notes,
@@ -130,6 +154,9 @@ const workoutSelect = `
       id,
       sort_order,
       set_type,
+      duration_seconds,
+      distance_km,
+      intensity,
       weight_kg,
       reps,
       rest_seconds,
@@ -145,6 +172,14 @@ function sortByOrder<T extends { sort_order: number }>(items: T[]) {
   return [...items].sort((a, b) => a.sort_order - b.sort_order);
 }
 
+function firstExerciseCategory(rawExercise: RawWorkoutExercise["exercises"]) {
+  if (Array.isArray(rawExercise)) {
+    return rawExercise[0]?.category ?? "chest";
+  }
+
+  return rawExercise?.category ?? "chest";
+}
+
 function mapWorkout(raw: RawWorkout): Workout {
   return {
     finished_at: raw.finished_at,
@@ -157,16 +192,21 @@ function mapWorkout(raw: RawWorkout): Workout {
     total_volume_kg: Number(raw.total_volume_kg ?? 0),
     workoutExercises: sortByOrder(raw.workout_exercises ?? []).map(
       (exercise) => ({
+        exercise_category: firstExerciseCategory(exercise.exercises),
         exercise_id: exercise.exercise_id,
         exercise_name_snapshot: exercise.exercise_name_snapshot,
         id: exercise.id,
         notes: exercise.notes,
         sets: sortByOrder(exercise.workout_sets ?? []).map((set) => ({
           ...set,
+          distance_km: set.distance_km === null ? null : Number(set.distance_km),
           previous_reps: null,
           previous_weight_kg: null,
           rir: set.rir === null ? null : Number(set.rir),
           rpe: set.rpe === null ? null : Number(set.rpe),
+          target_distance_km: null,
+          target_duration_seconds: null,
+          target_intensity: null,
           target_reps_max: null,
           target_reps_min: null,
           target_weight_kg: null,
@@ -192,6 +232,9 @@ async function getProgramTargets(
       {
         target_reps_max: number | null;
         target_reps_min: number | null;
+        target_distance_km: number | null;
+        target_duration_seconds: number | null;
+        target_intensity: string | null;
         target_weight_kg: number | null;
       }
     >();
@@ -205,6 +248,9 @@ async function getProgramTargets(
         sort_order,
         program_sets (
           sort_order,
+          target_duration_seconds,
+          target_distance_km,
+          target_intensity,
           target_reps_min,
           target_reps_max,
           target_weight_kg
@@ -222,6 +268,9 @@ async function getProgramTargets(
     {
       target_reps_max: number | null;
       target_reps_min: number | null;
+      target_distance_km: number | null;
+      target_duration_seconds: number | null;
+      target_intensity: string | null;
       target_weight_kg: number | null;
     }
   >();
@@ -229,6 +278,10 @@ async function getProgramTargets(
   for (const exercise of (data ?? []) as RawProgramExerciseTarget[]) {
     for (const set of exercise.program_sets ?? []) {
       targets.set(setContextKey(exercise.sort_order, set.sort_order), {
+        target_distance_km:
+          set.target_distance_km === null ? null : Number(set.target_distance_km),
+        target_duration_seconds: set.target_duration_seconds,
+        target_intensity: set.target_intensity,
         target_reps_max: set.target_reps_max,
         target_reps_min: set.target_reps_min,
         target_weight_kg:
@@ -355,6 +408,9 @@ async function hydrateActiveWorkoutContext(
           previous_reps: previous?.previous_reps ?? null,
           previous_weight_kg: previous?.previous_weight_kg ?? null,
           target_reps_max: target?.target_reps_max ?? null,
+          target_distance_km: target?.target_distance_km ?? null,
+          target_duration_seconds: target?.target_duration_seconds ?? null,
+          target_intensity: target?.target_intensity ?? null,
           target_reps_min: target?.target_reps_min ?? null,
           target_weight_kg: target?.target_weight_kg ?? null
         };

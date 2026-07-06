@@ -15,10 +15,16 @@ const requiredColumns = [
   "set_number",
   "reps_min",
   "reps_max",
-  "weight_kg"
+  "weight_kg",
+  "duration_minutes",
+  "distance_km",
+  "intensity"
 ];
 const requiredValueColumns = requiredColumns.filter(
-  (column) => column !== "weight_kg"
+  (column) =>
+    !["weight_kg", "duration_minutes", "distance_km", "intensity"].includes(
+      column
+    )
 );
 
 const allowedProgramCategories = new Set([
@@ -42,6 +48,8 @@ type ParsedProgramRow = {
   day: number;
   dayName: string;
   difficulty: string | null;
+  distanceKm: number | null;
+  durationSeconds: number | null;
   exerciseCategory: string;
   exerciseId: string;
   exerciseName: string;
@@ -49,6 +57,7 @@ type ParsedProgramRow = {
   repsMax: number | null;
   repsMin: number | null;
   restSeconds: number | null;
+  intensity: string | null;
   rir: number | null;
   rowNumber: number;
   rpe: number | null;
@@ -78,6 +87,11 @@ function optionalNumber(value: string) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function optionalSecondsFromMinutes(value: string) {
+  const minutes = optionalNumber(value);
+  return minutes === null ? null : Math.round(minutes * 60);
 }
 
 function positiveInteger(value: string) {
@@ -267,6 +281,11 @@ export async function importProgramCsv(formData: FormData) {
     const repsMin = optionalNumber(cell(row, "reps_min"));
     const repsMax = optionalNumber(cell(row, "reps_max"));
     const weightKg = optionalNumber(cell(row, "weight_kg"));
+    const durationSeconds = optionalSecondsFromMinutes(
+      cell(row, "duration_minutes")
+    );
+    const distanceKm = optionalNumber(cell(row, "distance_km"));
+    const intensity = cell(row, "intensity") || null;
     const legacyWeight = optionalNumber(cell(row, "weight"));
     const weightUnit = row.weight_unit?.trim().toLowerCase() === "lb" ? "lb" : "kg";
     const setType = normalizeEnumValue(row.set_type || "working");
@@ -305,6 +324,35 @@ export async function importProgramCsv(formData: FormData) {
         code: "invalid_range",
         field: "reps_min",
         message: "reps_min cannot be greater than reps_max.",
+        raw_row: row,
+        row_number: rowNumber
+      });
+    }
+
+    if (
+      exerciseCategory !== "cardio" &&
+      (repsMin === null || repsMax === null)
+    ) {
+      errors.push({
+        code: "required",
+        field: "reps_min",
+        message: "reps_min and reps_max are required for lifting exercises.",
+        raw_row: row,
+        row_number: rowNumber
+      });
+    }
+
+    if (
+      exerciseCategory === "cardio" &&
+      durationSeconds === null &&
+      distanceKm === null &&
+      !intensity
+    ) {
+      errors.push({
+        code: "required",
+        field: "duration_minutes",
+        message:
+          "Cardio rows need duration_minutes, distance_km, or intensity.",
         raw_row: row,
         row_number: rowNumber
       });
@@ -386,6 +434,8 @@ export async function importProgramCsv(formData: FormData) {
         day,
         dayName,
         difficulty,
+        distanceKm,
+        durationSeconds,
         exerciseCategory,
         exerciseId,
         exerciseName,
@@ -393,6 +443,7 @@ export async function importProgramCsv(formData: FormData) {
         repsMax,
         repsMin,
         restSeconds: optionalNumber(row.rest_seconds ?? ""),
+        intensity,
         rir: optionalNumber(row.rir ?? ""),
         rowNumber,
         rpe: optionalNumber(row.rpe ?? ""),
@@ -509,6 +560,9 @@ export async function importProgramCsv(formData: FormData) {
             rest_seconds: row.restSeconds,
             set_type: row.setType,
             sort_order: row.setOrder,
+            target_distance_km: row.distanceKm,
+            target_duration_seconds: row.durationSeconds,
+            target_intensity: row.intensity,
             target_reps_max: row.repsMax,
             target_reps_min: row.repsMin,
             target_rir: row.rir,

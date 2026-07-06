@@ -5,15 +5,15 @@ import { importProgramCsv } from "@/app/(app)/import/programs/actions";
 import { getRecentProgramImports } from "@/lib/imports/queries";
 import { requireUser } from "@/lib/auth/session";
 
-const sampleCsv = `program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
-My Imported Plan,Push,Barbell Bench Press,chest,1,6,8,60
-My Imported Plan,Push,Barbell Bench Press,chest,2,6,8,60
-My Imported Plan,Pull,Lat Pulldown,back,1,8,10,45`;
+const sampleCsv = `program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,duration_minutes,distance_km,intensity
+My Imported Plan,Push,Barbell Bench Press,chest,1,6,8,60,,,
+My Imported Plan,Push,Barbell Bench Press,chest,2,6,8,60,,,
+My Imported Plan,Cardio,Treadmill Run,cardio,1,,,,20,3,RPE 7`;
 
 const csvPrompt = `Turn the workout plan below into a CSV for my gym app.
 
 Use exactly these columns:
-program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,duration_minutes,distance_km,intensity
 
 Rules:
 - Return only raw CSV. No markdown, no code fence, no explanation.
@@ -24,7 +24,9 @@ Rules:
 - category must be one of: chest, back, shoulders, biceps, triceps, quads, hamstrings, glutes, calves, core, cardio, mobility, full_body.
 - Pick the category from the main body part trained by the exercise, not from the split name.
 - Use kg only.
-- If weight is unknown, leave weight_kg blank.
+- For lifting rows, use reps_min, reps_max, and weight_kg. If weight is unknown, leave weight_kg blank.
+- For cardio rows, leave reps_min, reps_max, and weight_kg blank. Use duration_minutes, distance_km, and/or intensity.
+- intensity is short text like RPE 7, level 8, or 2% incline.
 - Use simple exercise names.
 - Use double progression: give each lift a reps_min and reps_max range.
 - Repeat the same starting weight for sets that should progress together.
@@ -34,13 +36,14 @@ Workout plan:
 [paste workout here]`;
 
 const createPlanPrompt = `Ask me up to 5 quick questions, then create a simple gym plan CSV using these columns:
-program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg
+program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,duration_minutes,distance_km,intensity
 
 Rules:
 - Return only raw CSV when done.
 - Use kg only.
 - category must be one of: chest, back, shoulders, biceps, triceps, quads, hamstrings, glutes, calves, core, cardio, mobility, full_body.
 - Use double progression with rep ranges.
+- For cardio rows, use duration_minutes, distance_km, and/or intensity instead of reps and weight.
 - Use one row per set.
 - Keep it practical and use common exercises.`;
 

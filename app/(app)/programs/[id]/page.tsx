@@ -23,6 +23,9 @@ function formatValue(value: string | null | undefined) {
 
 type SetTarget = {
   sort_order: number;
+  target_distance_km: number | null;
+  target_duration_seconds: number | null;
+  target_intensity: string | null;
   target_reps_max: number | null;
   target_reps_min: number | null;
   target_weight_kg: number | null;
@@ -46,15 +49,49 @@ function formatReps(min: number | null, max: number | null) {
   return `${min ?? max ?? "-"}`;
 }
 
+function formatDuration(seconds: number | null) {
+  if (seconds === null) {
+    return null;
+  }
+
+  const minutes = seconds / 60;
+  return `${Number(minutes).toLocaleString(undefined, {
+    maximumFractionDigits: 1
+  })} min`;
+}
+
+function formatDistance(value: number | null) {
+  if (value === null) {
+    return null;
+  }
+
+  return `${Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 2
+  })} km`;
+}
+
+function formatCardio(set: SetTarget) {
+  const parts = [
+    formatDuration(set.target_duration_seconds),
+    formatDistance(set.target_distance_km),
+    set.target_intensity
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" | ") : "cardio target";
+}
+
 function samePrescription(a: SetTarget, b: SetTarget) {
   return (
     a.target_weight_kg === b.target_weight_kg &&
     a.target_reps_min === b.target_reps_min &&
-    a.target_reps_max === b.target_reps_max
+    a.target_reps_max === b.target_reps_max &&
+    a.target_duration_seconds === b.target_duration_seconds &&
+    a.target_distance_km === b.target_distance_km &&
+    a.target_intensity === b.target_intensity
   );
 }
 
-function groupedSetSummaries(sets: SetTarget[]) {
+function groupedSetSummaries(sets: SetTarget[], exerciseCategory: string) {
   const summaries: string[] = [];
   let index = 0;
 
@@ -76,10 +113,12 @@ function groupedSetSummaries(sets: SetTarget[]) {
         : `${first.sort_order}-${last.sort_order}`;
 
     summaries.push(
-      `${range}: ${formatKg(first.target_weight_kg)} x ${formatReps(
-        first.target_reps_min,
-        first.target_reps_max
-      )}`
+      exerciseCategory === "cardio"
+        ? `${range}: ${formatCardio(first)}`
+        : `${range}: ${formatKg(first.target_weight_kg)} x ${formatReps(
+            first.target_reps_min,
+            first.target_reps_max
+          )}`
     );
     index = lastIndex + 1;
   }
@@ -213,7 +252,10 @@ export default async function ProgramDetailPage({
                         {exercise.notes ? ` - ${exercise.notes}` : ""}
                       </p>
                       <div className="mt-2 grid gap-1">
-                        {groupedSetSummaries(exercise.sets).map((summary, index) => (
+                        {groupedSetSummaries(
+                          exercise.sets,
+                          exercise.exercise_category
+                        ).map((summary, index) => (
                           <p
                             key={`${summary}-${index}`}
                             className="text-xs text-[color:var(--muted)]"

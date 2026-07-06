@@ -14,6 +14,9 @@ export type ProgramSet = {
   rest_seconds: number | null;
   set_type: string;
   sort_order: number;
+  target_distance_km: number | null;
+  target_duration_seconds: number | null;
+  target_intensity: string | null;
   target_reps_max: number | null;
   target_reps_min: number | null;
   target_rir: number | null;
@@ -22,6 +25,7 @@ export type ProgramSet = {
 };
 
 export type ProgramExercise = {
+  exercise_category: string;
   exercise_id: string;
   exercise_name: string;
   id: string;
@@ -143,9 +147,11 @@ type RawProgramExercise = {
   exercise_id: string;
   exercises:
     | {
+        category: string;
         name: string;
       }
     | {
+        category: string;
         name: string;
       }[]
     | null;
@@ -222,12 +228,16 @@ const programDetailSelect = `
         sort_order,
         notes,
         exercises (
+          category,
           name
         ),
         program_sets (
           id,
           sort_order,
           set_type,
+          target_duration_seconds,
+          target_distance_km,
+          target_intensity,
           target_reps_min,
           target_reps_max,
           target_weight_kg,
@@ -256,9 +266,19 @@ function firstExerciseName(rawExercise: RawProgramExercise["exercises"]) {
   return rawExercise?.name ?? "Exercise";
 }
 
+function firstExerciseCategory(rawExercise: RawProgramExercise["exercises"]) {
+  if (Array.isArray(rawExercise)) {
+    return rawExercise[0]?.category ?? "chest";
+  }
+
+  return rawExercise?.category ?? "chest";
+}
+
 function mapProgramSet(set: RawProgramSet): ProgramSet {
   return {
     ...set,
+    target_distance_km:
+      set.target_distance_km === null ? null : Number(set.target_distance_km),
     target_rir: set.target_rir === null ? null : Number(set.target_rir),
     target_rpe: set.target_rpe === null ? null : Number(set.target_rpe),
     target_weight_kg:
@@ -295,6 +315,7 @@ function mapProgram(raw: RawProgram): ProgramDetail {
           day.program_exercises ?? [],
           "sort_order"
         ).map((exercise) => ({
+          exercise_category: firstExerciseCategory(exercise.exercises),
           exercise_id: exercise.exercise_id,
           exercise_name: firstExerciseName(exercise.exercises),
           id: exercise.id,

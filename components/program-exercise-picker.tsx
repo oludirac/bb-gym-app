@@ -30,6 +30,7 @@ export function ProgramExercisePicker({
     [exerciseOptions]
   );
   const [category, setCategory] = useState<string>(categories[0] ?? "chest");
+  const isCardio = category === "cardio";
   const filteredExercises = exerciseOptions.filter(
     (exercise) => exercise.category === category
   );
@@ -76,7 +77,7 @@ export function ProgramExercisePicker({
           </span>
           <select
             name="setCount"
-            defaultValue="3"
+            defaultValue={isCardio ? "1" : "3"}
             className="field-base min-h-11 px-2 text-center text-sm font-black"
           >
             {[1, 2, 3, 4, 5].map((count) => (
@@ -86,46 +87,91 @@ export function ProgramExercisePicker({
             ))}
           </select>
         </label>
-        <label className="grid gap-1">
-          <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-            min
-          </span>
-          <input
-            name="targetRepsMin"
-            type="number"
-            inputMode="numeric"
-            min="0"
-            defaultValue="8"
-            className="field-base min-h-11 px-2 text-center text-sm font-black"
-          />
-        </label>
-        <label className="grid gap-1">
-          <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-            max
-          </span>
-          <input
-            name="targetRepsMax"
-            type="number"
-            inputMode="numeric"
-            min="0"
-            defaultValue="12"
-            className="field-base min-h-11 px-2 text-center text-sm font-black"
-          />
-        </label>
-        <label className="grid gap-1">
-          <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-            kg
-          </span>
-          <input
-            name="targetWeightKg"
-            type="number"
-            inputMode="decimal"
-            min="0"
-            step="0.5"
-            placeholder="0"
-            className="field-base min-h-11 px-2 text-center text-sm font-black"
-          />
-        </label>
+        {isCardio ? (
+          <>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                min
+              </span>
+              <input
+                name="targetDurationMinutes"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.5"
+                defaultValue="20"
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                km
+              </span>
+              <input
+                name="targetDistanceKm"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.1"
+                placeholder="0"
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                level
+              </span>
+              <input
+                name="targetIntensity"
+                placeholder="RPE 7"
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                min
+              </span>
+              <input
+                name="targetRepsMin"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                defaultValue="8"
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                max
+              </span>
+              <input
+                name="targetRepsMax"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                defaultValue="12"
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                kg
+              </span>
+              <input
+                name="targetWeightKg"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.5"
+                placeholder="0"
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+          </>
+        )}
       </div>
       <FormSubmitButton pendingLabel="Adding...">
         <Plus aria-hidden="true" className="size-4" />

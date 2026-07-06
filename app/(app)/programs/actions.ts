@@ -30,6 +30,11 @@ function optionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function optionalSecondsFromMinutes(value: string) {
+  const minutes = optionalNumber(value);
+  return minutes === null ? null : Math.round(minutes * 60);
+}
+
 function redirectWithError(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
 }
@@ -358,12 +363,18 @@ export async function addProgramExercise(formData: FormData) {
   const repsMax =
     optionalNumber(fieldValue(formData, "targetRepsMax")) ?? repsMin;
   const targetWeightKg = optionalNumber(fieldValue(formData, "targetWeightKg"));
+  const targetDurationSeconds = optionalSecondsFromMinutes(
+    fieldValue(formData, "targetDurationMinutes")
+  );
+  const targetDistanceKm = optionalNumber(fieldValue(formData, "targetDistanceKm"));
+  const targetIntensity = fieldValue(formData, "targetIntensity") || null;
+  const isCardio = fieldValue(formData, "exerciseCategory") === "cardio";
 
   if (!programId || !programDayId || !exerciseId) {
     redirect(programId ? `/programs/${programId}/edit` : "/programs");
   }
 
-  if (repsMin > repsMax) {
+  if (!isCardio && repsMin > repsMax) {
     redirectWithError(
       `/programs/${programId}/edit`,
       "Rep range must go from low to high."
@@ -393,9 +404,12 @@ export async function addProgramExercise(formData: FormData) {
         program_exercise_id: programExercise.id,
         set_type: "working",
         sort_order: index + 1,
-        target_reps_min: repsMin,
-        target_reps_max: repsMax,
-        target_weight_kg: targetWeightKg
+        target_distance_km: isCardio ? targetDistanceKm : null,
+        target_duration_seconds: isCardio ? targetDurationSeconds : null,
+        target_intensity: isCardio ? targetIntensity : null,
+        target_reps_min: isCardio ? null : repsMin,
+        target_reps_max: isCardio ? null : repsMax,
+        target_weight_kg: isCardio ? null : targetWeightKg
       }))
     );
   }
@@ -463,6 +477,11 @@ export async function updateProgramSet(formData: FormData) {
       notes: fieldValue(formData, "notes") || null,
       rest_seconds: optionalNumber(fieldValue(formData, "restSeconds")),
       set_type: parseSetType(fieldValue(formData, "setType")),
+      target_distance_km: optionalNumber(fieldValue(formData, "targetDistanceKm")),
+      target_duration_seconds: optionalSecondsFromMinutes(
+        fieldValue(formData, "targetDurationMinutes")
+      ),
+      target_intensity: fieldValue(formData, "targetIntensity") || null,
       target_reps_max: optionalNumber(fieldValue(formData, "targetRepsMax")),
       target_reps_min: optionalNumber(fieldValue(formData, "targetRepsMin")),
       target_rir: optionalNumber(fieldValue(formData, "targetRir")),
@@ -591,6 +610,9 @@ export async function copyProgram(formData: FormData) {
             rest_seconds: set.rest_seconds,
             set_type: set.set_type,
             sort_order: set.sort_order,
+            target_distance_km: set.target_distance_km,
+            target_duration_seconds: set.target_duration_seconds,
+            target_intensity: set.target_intensity,
             target_reps_max: set.target_reps_max,
             target_reps_min: set.target_reps_min,
             target_rir: set.target_rir,
@@ -867,6 +889,9 @@ export async function startWorkoutFromProgramDay(formData: FormData) {
     await supabase.from("workout_sets").insert(
       exercise.sets.map((set) => ({
         notes: set.notes,
+        distance_km: set.target_distance_km,
+        duration_seconds: set.target_duration_seconds,
+        intensity: set.target_intensity,
         reps: set.target_reps_min ?? set.target_reps_max,
         rest_seconds: set.rest_seconds,
         rir: set.target_rir,

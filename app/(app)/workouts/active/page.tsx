@@ -39,14 +39,21 @@ function completedCount(exercise: WorkoutExercise) {
   return exercise.sets.filter((set) => set.completed_at).length;
 }
 
+function secondsToMinutes(seconds: number | null) {
+  return seconds === null ? "" : seconds / 60;
+}
+
 function SetRow({
   defaultRestSeconds,
+  exerciseCategory,
   set
 }: {
   defaultRestSeconds: number;
+  exerciseCategory: string;
   set: WorkoutSet;
 }) {
   const isDone = Boolean(set.completed_at);
+  const isCardio = exerciseCategory === "cardio";
   const restSeconds = set.rest_seconds ?? defaultRestSeconds;
 
   return (
@@ -64,35 +71,85 @@ function SetRow({
       <div className="grid min-h-11 place-items-center rounded-lg border border-[color:var(--panel-border)] text-sm font-black">
         {set.sort_order}
       </div>
-      <label className="grid min-w-0 gap-1">
-        <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
-          kg
-        </span>
-        <input
-          name="weightKg"
-          type="number"
-          inputMode="decimal"
-          step="0.5"
-          min="0"
-          defaultValue={set.weight_kg ?? set.target_weight_kg ?? ""}
-          className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
-        />
-      </label>
-      <label className="grid min-w-0 gap-1">
-        <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
-          reps
-        </span>
-        <input
-          name="reps"
-          type="number"
-          inputMode="numeric"
-          min="0"
-          defaultValue={
-            set.reps ?? set.target_reps_min ?? set.target_reps_max ?? ""
-          }
-          className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
-        />
-      </label>
+      {isCardio ? (
+        <>
+          <label className="grid min-w-0 gap-1">
+            <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+              min
+            </span>
+            <input
+              name="durationMinutes"
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              min="0"
+              defaultValue={
+                secondsToMinutes(
+                  set.duration_seconds ?? set.target_duration_seconds
+                ) || ""
+              }
+              className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
+            />
+          </label>
+          <label className="grid min-w-0 gap-1">
+            <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+              km
+            </span>
+            <input
+              name="distanceKm"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0"
+              defaultValue={set.distance_km ?? set.target_distance_km ?? ""}
+              className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
+            />
+          </label>
+          <label className="col-span-3 grid min-w-0 gap-1">
+            <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+              intensity
+            </span>
+            <input
+              name="intensity"
+              defaultValue={set.intensity ?? set.target_intensity ?? ""}
+              placeholder="RPE 7, level 8, 2% incline"
+              className="field-base min-h-11 w-full min-w-0 px-3 text-sm font-black"
+            />
+          </label>
+        </>
+      ) : (
+        <>
+          <label className="grid min-w-0 gap-1">
+            <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+              kg
+            </span>
+            <input
+              name="weightKg"
+              type="number"
+              inputMode="decimal"
+              step="0.5"
+              min="0"
+              defaultValue={set.weight_kg ?? set.target_weight_kg ?? ""}
+              className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
+            />
+          </label>
+          <label className="grid min-w-0 gap-1">
+            <span className="text-[10px] font-black uppercase text-[color:var(--muted)]">
+              reps
+            </span>
+            <input
+              name="reps"
+              type="number"
+              inputMode="numeric"
+              min="0"
+              defaultValue={
+                set.reps ?? set.target_reps_min ?? set.target_reps_max ?? ""
+              }
+              className="field-base min-h-11 w-full min-w-0 px-1 text-center text-sm font-black"
+            />
+          </label>
+        </>
+      )}
       <RestTimerSubmitButton isDone={isDone} restSeconds={restSeconds} />
     </form>
   );
@@ -139,6 +196,7 @@ function WorkoutExerciseCard({
           <SetRow
             key={set.id}
             defaultRestSeconds={defaultRestSeconds}
+            exerciseCategory={exercise.exercise_category}
             set={set}
           />
         ))}

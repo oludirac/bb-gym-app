@@ -21,6 +21,11 @@ function optionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function optionalSecondsFromMinutes(value: string) {
+  const minutes = optionalNumber(value);
+  return minutes === null ? null : Math.round(minutes * 60);
+}
+
 async function nextSortOrder(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   table: string,
@@ -282,7 +287,9 @@ export async function addWorkoutSet(formData: FormData) {
   if (copySetId) {
     const { data } = await supabase
       .from("workout_sets")
-      .select("set_type, weight_kg, reps, rpe, rir, rest_seconds, notes")
+      .select(
+        "set_type, weight_kg, reps, duration_seconds, distance_km, intensity, rpe, rir, rest_seconds, notes"
+      )
       .eq("id", copySetId)
       .maybeSingle();
     copiedSet = data;
@@ -290,6 +297,9 @@ export async function addWorkoutSet(formData: FormData) {
 
   await supabase.from("workout_sets").insert({
     completed_at: null,
+    distance_km: copiedSet?.distance_km ?? null,
+    duration_seconds: copiedSet?.duration_seconds ?? null,
+    intensity: copiedSet?.intensity ?? null,
     reps: copiedSet?.reps ?? null,
     rest_seconds: copiedSet?.rest_seconds ?? null,
     rir: copiedSet?.rir ?? null,
@@ -316,6 +326,11 @@ export async function saveWorkoutSet(formData: FormData) {
     .from("workout_sets")
     .update({
       completed_at: new Date().toISOString(),
+      distance_km: optionalNumber(fieldValue(formData, "distanceKm")),
+      duration_seconds: optionalSecondsFromMinutes(
+        fieldValue(formData, "durationMinutes")
+      ),
+      intensity: fieldValue(formData, "intensity") || null,
       notes: fieldValue(formData, "notes") || null,
       reps: optionalNumber(fieldValue(formData, "reps")),
       rest_seconds: optionalNumber(fieldValue(formData, "restSeconds")),

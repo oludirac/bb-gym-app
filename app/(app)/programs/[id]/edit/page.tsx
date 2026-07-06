@@ -35,12 +35,16 @@ type EditProgramPageProps = {
 };
 
 function SetEditor({
+  exerciseCategory,
   programId,
   set
 }: {
+  exerciseCategory: string;
   programId: string;
   set: ProgramSet;
 }) {
+  const isCardio = exerciseCategory === "cardio";
+
   return (
     <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
       <form action={updateProgramSet} className="space-y-3">
@@ -59,48 +63,95 @@ function SetEditor({
           </FormSubmitButton>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              reps from
-            </span>
-            <input
-              name="targetRepsMin"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              defaultValue={set.target_reps_min ?? ""}
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              reps to
-            </span>
-            <input
-              name="targetRepsMax"
-              type="number"
-              inputMode="numeric"
-              min="0"
-              defaultValue={set.target_reps_max ?? ""}
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-          <label className="grid gap-1">
-            <span className="text-[11px] font-black text-[color:var(--muted)]">
-              kg
-            </span>
-            <input
-              name="targetWeightKg"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.5"
-              defaultValue={set.target_weight_kg ?? ""}
-              className="field-base min-h-11 px-2 text-center text-sm font-black"
-            />
-          </label>
-        </div>
+        {isCardio ? (
+          <div className="grid grid-cols-3 gap-2">
+            <label className="grid gap-1">
+              <span className="text-[11px] font-black text-[color:var(--muted)]">
+                minutes
+              </span>
+              <input
+                name="targetDurationMinutes"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.5"
+                defaultValue={
+                  set.target_duration_seconds === null
+                    ? ""
+                    : set.target_duration_seconds / 60
+                }
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-[11px] font-black text-[color:var(--muted)]">
+                km
+              </span>
+              <input
+                name="targetDistanceKm"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.1"
+                defaultValue={set.target_distance_km ?? ""}
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-[11px] font-black text-[color:var(--muted)]">
+                level
+              </span>
+              <input
+                name="targetIntensity"
+                defaultValue={set.target_intensity ?? ""}
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-2">
+            <label className="grid gap-1">
+              <span className="text-[11px] font-black text-[color:var(--muted)]">
+                reps from
+              </span>
+              <input
+                name="targetRepsMin"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                defaultValue={set.target_reps_min ?? ""}
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-[11px] font-black text-[color:var(--muted)]">
+                reps to
+              </span>
+              <input
+                name="targetRepsMax"
+                type="number"
+                inputMode="numeric"
+                min="0"
+                defaultValue={set.target_reps_max ?? ""}
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+            <label className="grid gap-1">
+              <span className="text-[11px] font-black text-[color:var(--muted)]">
+                kg
+              </span>
+              <input
+                name="targetWeightKg"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.5"
+                defaultValue={set.target_weight_kg ?? ""}
+                className="field-base min-h-11 px-2 text-center text-sm font-black"
+              />
+            </label>
+          </div>
+        )}
       </form>
 
       <form action={deleteProgramSet} className="mt-2">
@@ -136,15 +187,49 @@ function formatReps(min: number | null, max: number | null) {
   return `${min ?? max ?? "-"}`;
 }
 
+function formatDuration(seconds: number | null) {
+  if (seconds === null) {
+    return null;
+  }
+
+  const minutes = seconds / 60;
+  return `${Number(minutes).toLocaleString(undefined, {
+    maximumFractionDigits: 1
+  })} min`;
+}
+
+function formatDistance(value: number | null) {
+  if (value === null) {
+    return null;
+  }
+
+  return `${Number(value).toLocaleString(undefined, {
+    maximumFractionDigits: 2
+  })} km`;
+}
+
+function formatCardio(set: ProgramSet) {
+  const parts = [
+    formatDuration(set.target_duration_seconds),
+    formatDistance(set.target_distance_km),
+    set.target_intensity
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" | ") : "cardio target";
+}
+
 function samePrescription(a: ProgramSet, b: ProgramSet) {
   return (
     a.target_weight_kg === b.target_weight_kg &&
     a.target_reps_min === b.target_reps_min &&
-    a.target_reps_max === b.target_reps_max
+    a.target_reps_max === b.target_reps_max &&
+    a.target_duration_seconds === b.target_duration_seconds &&
+    a.target_distance_km === b.target_distance_km &&
+    a.target_intensity === b.target_intensity
   );
 }
 
-function groupedSetSummaries(sets: ProgramSet[]) {
+function groupedSetSummaries(sets: ProgramSet[], exerciseCategory: string) {
   const summaries: string[] = [];
   let index = 0;
 
@@ -166,10 +251,12 @@ function groupedSetSummaries(sets: ProgramSet[]) {
         : `${first.sort_order}-${last.sort_order}`;
 
     summaries.push(
-      `${range}: ${formatKg(first.target_weight_kg)} x ${formatReps(
-        first.target_reps_min,
-        first.target_reps_max
-      )}`
+      exerciseCategory === "cardio"
+        ? `${range}: ${formatCardio(first)}`
+        : `${range}: ${formatKg(first.target_weight_kg)} x ${formatReps(
+            first.target_reps_min,
+            first.target_reps_max
+          )}`
     );
     index = lastIndex + 1;
   }
@@ -184,7 +271,10 @@ function ExerciseCard({
   exercise: ProgramExercise;
   programId: string;
 }) {
-  const setSummaries = groupedSetSummaries(exercise.sets);
+  const setSummaries = groupedSetSummaries(
+    exercise.sets,
+    exercise.exercise_category
+  );
 
   return (
     <article className="app-card-flat overflow-hidden">
@@ -222,7 +312,12 @@ function ExerciseCard({
         </summary>
         <div className="space-y-3 p-3 pt-0">
           {exercise.sets.map((set) => (
-            <SetEditor key={set.id} programId={programId} set={set} />
+            <SetEditor
+              key={set.id}
+              exerciseCategory={exercise.exercise_category}
+              programId={programId}
+              set={set}
+            />
           ))}
         </div>
 
