@@ -10,6 +10,7 @@ import {
 
 const setTypes = new Set(["warmup", "working", "drop", "failure"]);
 const scheduleTypes = new Set<ProgramScheduleType>(["calendar", "sequence"]);
+type MoveDirection = "up" | "down";
 
 function fieldValue(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -51,6 +52,10 @@ function parseScheduleType(value: string): ProgramScheduleType {
 
 function parseSetType(value: string) {
   return setTypes.has(value) ? value : "working";
+}
+
+function isMoveDirection(value: string): value is MoveDirection {
+  return value === "up" || value === "down";
 }
 
 function collectNewPlanDays(formData: FormData) {
@@ -440,14 +445,24 @@ export async function moveProgramDay(formData: FormData) {
   const programDayId = fieldValue(formData, "programDayId");
   const direction = fieldValue(formData, "direction");
 
-  if (!programId || !programDayId || !["up", "down"].includes(direction)) {
+  if (!programId || !programDayId || !isMoveDirection(direction)) {
     redirect(programId ? `/programs/${programId}/edit` : "/programs");
   }
 
+  await moveProgramDayById(supabase, programId, programDayId, direction);
+  redirect(`/programs/${programId}/edit`);
+}
+
+async function moveProgramDayById(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  programId: string,
+  programDayId: string,
+  direction: MoveDirection
+) {
   const program = await getProgramDetail(supabase, programId);
 
   if (!program || program.is_public) {
-    redirect("/programs");
+    return;
   }
 
   const days = program.weeks
@@ -464,7 +479,7 @@ export async function moveProgramDay(formData: FormData) {
   const target = days[targetIndex];
 
   if (!current || !target || current.weekId !== target.weekId) {
-    redirect(`/programs/${programId}/edit`);
+    return;
   }
 
   const temporaryDayNumber =
@@ -492,7 +507,20 @@ export async function moveProgramDay(formData: FormData) {
   revalidatePath(`/programs/${programId}`);
   revalidatePath(`/programs/${programId}/edit`);
   revalidatePath("/programs/active");
-  redirect(`/programs/${programId}/edit`);
+}
+
+export async function moveProgramDayInline(input: {
+  direction: MoveDirection;
+  programDayId: string;
+  programId: string;
+}) {
+  const { supabase } = await requireUser();
+  await moveProgramDayById(
+    supabase,
+    input.programId,
+    input.programDayId,
+    input.direction
+  );
 }
 
 export async function addProgramExercise(formData: FormData) {
@@ -600,14 +628,29 @@ export async function moveProgramExercise(formData: FormData) {
   const programExerciseId = fieldValue(formData, "programExerciseId");
   const direction = fieldValue(formData, "direction");
 
-  if (!programId || !programExerciseId || !["up", "down"].includes(direction)) {
+  if (!programId || !programExerciseId || !isMoveDirection(direction)) {
     redirect(programId ? `/programs/${programId}/edit` : "/programs");
   }
 
+  await moveProgramExerciseById(
+    supabase,
+    programId,
+    programExerciseId,
+    direction
+  );
+  redirect(`/programs/${programId}/edit`);
+}
+
+async function moveProgramExerciseById(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  programId: string,
+  programExerciseId: string,
+  direction: MoveDirection
+) {
   const program = await getProgramDetail(supabase, programId);
 
   if (!program || program.is_public) {
-    redirect("/programs");
+    return;
   }
 
   const exercises = program.weeks
@@ -623,7 +666,7 @@ export async function moveProgramExercise(formData: FormData) {
   );
 
   if (!current) {
-    redirect(`/programs/${programId}/edit`);
+    return;
   }
 
   const dayExercises = exercises
@@ -636,7 +679,7 @@ export async function moveProgramExercise(formData: FormData) {
   const target = dayExercises[targetIndex];
 
   if (!target) {
-    redirect(`/programs/${programId}/edit`);
+    return;
   }
 
   const temporarySortOrder =
@@ -664,7 +707,20 @@ export async function moveProgramExercise(formData: FormData) {
   revalidatePath(`/programs/${programId}`);
   revalidatePath(`/programs/${programId}/edit`);
   revalidatePath("/programs/active");
-  redirect(`/programs/${programId}/edit`);
+}
+
+export async function moveProgramExerciseInline(input: {
+  direction: MoveDirection;
+  programExerciseId: string;
+  programId: string;
+}) {
+  const { supabase } = await requireUser();
+  await moveProgramExerciseById(
+    supabase,
+    input.programId,
+    input.programExerciseId,
+    input.direction
+  );
 }
 
 export async function addProgramSet(formData: FormData) {

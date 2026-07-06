@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowDown, ArrowUp, Plus, Save, Trash2 } from "lucide-react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { LazyProgramExercisePicker } from "@/components/lazy-program-exercise-picker";
+import { ProgramReorderButton } from "@/components/program-reorder-button";
 import {
   addProgramDay,
   addProgramExercise,
@@ -10,8 +11,6 @@ import {
   deleteProgramDay,
   deleteProgramExercise,
   deleteProgramSet,
-  moveProgramExercise,
-  moveProgramDay,
   removeProgram,
   updateProgramBasics,
   updateProgramDay,
@@ -300,32 +299,20 @@ function ExerciseCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <form action={moveProgramExercise}>
-            <input type="hidden" name="programId" value={programId} />
-            <input type="hidden" name="programExerciseId" value={exercise.id} />
-            <input type="hidden" name="direction" value="up" />
-            <FormSubmitButton
-              pendingLabel="..."
-              className="inline-flex size-10 items-center justify-center rounded-lg border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
-              disabled={isFirst}
-            >
-              <ArrowUp aria-hidden="true" className="size-4" />
-              <span className="sr-only">Move exercise up</span>
-            </FormSubmitButton>
-          </form>
-          <form action={moveProgramExercise}>
-            <input type="hidden" name="programId" value={programId} />
-            <input type="hidden" name="programExerciseId" value={exercise.id} />
-            <input type="hidden" name="direction" value="down" />
-            <FormSubmitButton
-              pendingLabel="..."
-              className="inline-flex size-10 items-center justify-center rounded-lg border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
-              disabled={isLast}
-            >
-              <ArrowDown aria-hidden="true" className="size-4" />
-              <span className="sr-only">Move exercise down</span>
-            </FormSubmitButton>
-          </form>
+          <ProgramReorderButton
+            direction="up"
+            disabled={isFirst}
+            programExerciseId={exercise.id}
+            programId={programId}
+            target="exercise"
+          />
+          <ProgramReorderButton
+            direction="down"
+            disabled={isLast}
+            programExerciseId={exercise.id}
+            programId={programId}
+            target="exercise"
+          />
           <form action={deleteProgramExercise}>
             <input type="hidden" name="programId" value={programId} />
             <input type="hidden" name="programExerciseId" value={exercise.id} />
@@ -396,32 +383,20 @@ function DayEditor({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <form action={moveProgramDay}>
-            <input type="hidden" name="programId" value={programId} />
-            <input type="hidden" name="programDayId" value={day.id} />
-            <input type="hidden" name="direction" value="up" />
-            <FormSubmitButton
-              pendingLabel="..."
-              className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35"
-              disabled={isFirst}
-            >
-              <ArrowUp aria-hidden="true" className="size-4" />
-              <span className="sr-only">Move day up</span>
-            </FormSubmitButton>
-          </form>
-          <form action={moveProgramDay}>
-            <input type="hidden" name="programId" value={programId} />
-            <input type="hidden" name="programDayId" value={day.id} />
-            <input type="hidden" name="direction" value="down" />
-            <FormSubmitButton
-              pendingLabel="..."
-              className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35"
-              disabled={isLast}
-            >
-              <ArrowDown aria-hidden="true" className="size-4" />
-              <span className="sr-only">Move day down</span>
-            </FormSubmitButton>
-          </form>
+          <ProgramReorderButton
+            direction="up"
+            disabled={isFirst}
+            programDayId={day.id}
+            programId={programId}
+            target="day"
+          />
+          <ProgramReorderButton
+            direction="down"
+            disabled={isLast}
+            programDayId={day.id}
+            programId={programId}
+            target="day"
+          />
           <span className="app-chip hidden shrink-0 sm:inline-flex">Edit</span>
         </div>
       </summary>
