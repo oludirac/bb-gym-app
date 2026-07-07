@@ -98,7 +98,7 @@ function PlannedSetEditor({
               type="number"
               inputMode="decimal"
               min="0"
-              step="0.5"
+              step="0.25"
               defaultValue={set.target_weight_kg ?? ""}
               className="min-h-10 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-2 text-sm"
             />

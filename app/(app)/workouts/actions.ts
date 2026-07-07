@@ -26,6 +26,32 @@ function optionalSecondsFromMinutes(value: string) {
   return minutes === null ? null : Math.round(minutes * 60);
 }
 
+function optionalNumberFromValue(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function optionalSecondsFromMinuteValue(
+  value: number | string | null | undefined
+) {
+  const minutes = optionalNumberFromValue(value);
+  return minutes === null ? null : Math.round(minutes * 60);
+}
+
+type InlineWorkoutSetInput = {
+  distanceKm?: number | string | null;
+  durationMinutes?: number | string | null;
+  intensity?: string | null;
+  reps?: number | string | null;
+  restSeconds?: number | string | null;
+  setId: string;
+  weightKg?: number | string | null;
+};
+
 async function nextSortOrder(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   table: string,
@@ -343,6 +369,54 @@ export async function saveWorkoutSet(formData: FormData) {
 
   revalidatePath("/workouts/active");
   redirect("/workouts/active");
+}
+
+export async function completeWorkoutSetInline(input: InlineWorkoutSetInput) {
+  const { supabase } = await requireUser();
+
+  if (!input.setId) {
+    return { ok: false };
+  }
+
+  await supabase
+    .from("workout_sets")
+    .update({
+      completed_at: new Date().toISOString(),
+      distance_km: optionalNumberFromValue(input.distanceKm),
+      duration_seconds: optionalSecondsFromMinuteValue(input.durationMinutes),
+      intensity: input.intensity?.trim() || null,
+      reps: optionalNumberFromValue(input.reps),
+      rest_seconds: optionalNumberFromValue(input.restSeconds),
+      weight_kg: optionalNumberFromValue(input.weightKg)
+    })
+    .eq("id", input.setId);
+
+  revalidatePath("/workouts/active");
+  revalidatePath("/dashboard");
+  revalidatePath("/progress");
+
+  return { ok: true };
+}
+
+export async function undoWorkoutSetInline(setId: string) {
+  const { supabase } = await requireUser();
+
+  if (!setId) {
+    return { ok: false };
+  }
+
+  await supabase
+    .from("workout_sets")
+    .update({
+      completed_at: null
+    })
+    .eq("id", setId);
+
+  revalidatePath("/workouts/active");
+  revalidatePath("/dashboard");
+  revalidatePath("/progress");
+
+  return { ok: true };
 }
 
 export async function deleteWorkoutSet(formData: FormData) {

@@ -115,7 +115,15 @@ export default async function DashboardPage() {
               <Play aria-hidden="true" className="size-5 fill-current" />
               Resume workout
             </Link>
-          ) : dueDay && todayPlan?.status !== "done" ? (
+          ) : todayPlan?.status === "done" ? (
+            <Link
+              href="/workouts"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-base font-extrabold text-zinc-950 shadow-[0_14px_34px_rgba(245,158,11,0.22)] transition active:scale-[0.99]"
+            >
+              <History aria-hidden="true" className="size-5" />
+              View history
+            </Link>
+          ) : dueDay ? (
             <form action={startWorkoutFromProgramDay}>
               <input
                 type="hidden"
@@ -150,6 +158,15 @@ export default async function DashboardPage() {
           <p className="mt-1 text-sm text-[color:var(--muted)]">
             Scheduled for {formatDayDate(todayPlan.scheduled_for)}.
           </p>
+          <form action={startBlankWorkout} className="mt-3">
+            <FormSubmitButton
+              pendingLabel="Starting..."
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+            >
+              <Play aria-hidden="true" className="size-4 fill-current" />
+              Start another workout
+            </FormSubmitButton>
+          </form>
         </section>
       ) : null}
 

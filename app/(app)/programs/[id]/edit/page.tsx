@@ -146,7 +146,7 @@ function SetEditor({
                 type="number"
                 inputMode="decimal"
                 min="0"
-                step="0.5"
+                step="0.25"
                 defaultValue={set.target_weight_kg ?? ""}
                 className="field-base min-h-11 px-2 text-center text-sm font-black"
               />

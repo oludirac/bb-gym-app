@@ -665,7 +665,7 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
     program_name: program.name,
     scheduled_for: todayIso,
     schedule_type: program.schedule_type,
-    status: "sequence",
+    status: completedToday ? "done" : "sequence",
     week_number: current?.weekNumber ?? null
   } satisfies TodayPlanOverview;
 }

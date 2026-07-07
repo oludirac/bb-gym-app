@@ -165,7 +165,7 @@ export function ProgramExercisePicker({
                 type="number"
                 inputMode="decimal"
                 min="0"
-                step="0.5"
+                step="0.25"
                 placeholder="0"
                 className="field-base min-h-11 px-2 text-center text-sm font-black"
               />
