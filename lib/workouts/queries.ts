@@ -48,6 +48,12 @@ export type Workout = {
   workoutExercises: WorkoutExercise[];
 };
 
+export type ActiveWorkoutSummary = {
+  id: string;
+  name: string | null;
+  started_at: string;
+};
+
 export type ExerciseOption = {
   category: string;
   id: string;
@@ -449,6 +455,22 @@ export async function getActiveWorkout(supabase: SupabaseClient) {
   return data
     ? hydrateActiveWorkoutContext(supabase, mapWorkout(data as RawWorkout))
     : null;
+}
+
+export async function getActiveWorkoutSummary(supabase: SupabaseClient) {
+  const { data, error } = await supabase
+    .from("workouts")
+    .select("id, name, started_at")
+    .eq("status", "active")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? null) as ActiveWorkoutSummary | null;
 }
 
 export async function getWorkoutDetail(

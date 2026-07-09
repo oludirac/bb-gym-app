@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { ProgramExercisePicker } from "@/components/program-exercise-picker";
-import type { ExerciseOption } from "@/lib/workouts/queries";
 
 type LazyProgramExercisePickerProps = {
   action: (formData: FormData) => void | Promise<void>;
-  exerciseOptions: ExerciseOption[];
   programDayId: string;
   programId: string;
   recommendMainLift: boolean;
@@ -15,7 +13,6 @@ type LazyProgramExercisePickerProps = {
 
 export function LazyProgramExercisePicker({
   action,
-  exerciseOptions,
   programDayId,
   programId,
   recommendMainLift
@@ -49,7 +46,6 @@ export function LazyProgramExercisePicker({
       </div>
       <ProgramExercisePicker
         action={action}
-        exerciseOptions={exerciseOptions}
         programDayId={programDayId}
         programId={programId}
         recommendMainLift={recommendMainLift}

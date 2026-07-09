@@ -19,15 +19,20 @@ import {
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   addExerciseToWorkout,
-  addWorkoutSet,
+  addWorkoutSetInline,
   cancelActiveWorkout,
   completeWorkoutSetInline,
   finishWorkout,
+  getExerciseOptionsForCategory,
   moveWorkoutExerciseInline,
   removeWorkoutExercise,
   saveWorkoutSetWeightAsPlanWeight,
   undoWorkoutSetInline,
 } from "@/app/(app)/workouts/actions";
+import {
+  bodyPartCategories,
+  formatExerciseCategory
+} from "@/lib/exercises/categories";
 import type {
   ExerciseOption,
   Workout,
@@ -46,7 +51,6 @@ type Draft = {
 type ActiveWorkoutConsoleProps = {
   activeWorkout: Workout;
   defaultRestSeconds: number;
-  exerciseOptions: ExerciseOption[];
 };
 
 function formatDate(value: string) {
@@ -337,8 +341,7 @@ function RestPanel({
 
 export function ActiveWorkoutConsole({
   activeWorkout,
-  defaultRestSeconds,
-  exerciseOptions
+  defaultRestSeconds
 }: ActiveWorkoutConsoleProps) {
   const router = useRouter();
   const [workout, setWorkout] = useState(activeWorkout);
@@ -357,12 +360,21 @@ export function ActiveWorkoutConsole({
     setId: null
   }));
   const [savingSetId, setSavingSetId] = useState<string | null>(null);
+  const [pendingSetMutationId, setPendingSetMutationId] = useState<string | null>(
+    null
+  );
   const [isReordering, startReorderTransition] = useTransition();
   const [expandedCompleted, setExpandedCompleted] = useState<Set<string>>(
     () => new Set()
   );
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [remainingRest, setRemainingRest] = useState<number | null>(null);
+  const [addLiftCategory, setAddLiftCategory] = useState("chest");
+  const [exerciseOptionsByCategory, setExerciseOptionsByCategory] = useState<
+    Record<string, ExerciseOption[]>
+  >({});
+  const [isLoadingExerciseOptions, startExerciseOptionsTransition] =
+    useTransition();
 
   const focused = useMemo(() => {
     const fallback = firstIncomplete(workout);
@@ -396,6 +408,25 @@ export function ActiveWorkoutConsole({
         ...patch
       },
       setId: currentSet?.id ?? null
+    });
+  };
+
+  const loadExerciseCategory = (nextCategory: string) => {
+    setAddLiftCategory(nextCategory);
+
+    if (exerciseOptionsByCategory[nextCategory]) {
+      return;
+    }
+
+    startExerciseOptionsTransition(async () => {
+      const result = await getExerciseOptionsForCategory(nextCategory);
+
+      if (result.ok) {
+        setExerciseOptionsByCategory((current) => ({
+          ...current,
+          [nextCategory]: result.options
+        }));
+      }
     });
   };
 
@@ -571,6 +602,39 @@ export function ActiveWorkoutConsole({
     router.refresh();
   };
 
+  const addSetToExercise = async (
+    workoutExerciseId: string,
+    copySetId?: string | null
+  ) => {
+    setPendingSetMutationId(workoutExerciseId);
+    const result = await addWorkoutSetInline({
+      copySetId,
+      workoutExerciseId
+    });
+
+    if (result.ok && result.set) {
+      setWorkout((current) => ({
+        ...current,
+        workoutExercises: current.workoutExercises.map((exercise) =>
+          exercise.id === workoutExerciseId
+            ? {
+                ...exercise,
+                sets: [...exercise.sets, result.set].sort(
+                  (a, b) => a.sort_order - b.sort_order
+                )
+              }
+            : exercise
+        )
+      }));
+      setFocus({ exerciseId: workoutExerciseId, setId: result.set.id });
+    }
+
+    setPendingSetMutationId(null);
+    startReorderTransition(() => {
+      router.refresh();
+    });
+  };
+
   return (
     <div className="space-y-5 pb-44">
       <header className="app-card p-5">
@@ -587,19 +651,53 @@ export function ActiveWorkoutConsole({
       </header>
 
       <details className="app-card-flat p-3">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black">
+        <summary
+          onClick={() => loadExerciseCategory(addLiftCategory)}
+          className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black"
+        >
           Add lift
           <Plus aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
         </summary>
         <form
           action={addExerciseToWorkout}
-          className="mt-3 grid grid-cols-[1fr_auto] gap-2"
+          className="mt-3 grid gap-2"
         >
           <input type="hidden" name="workoutId" value={workout.id} />
           <label className="grid gap-1">
-            <span className="sr-only">Exercise</span>
-            <select name="exerciseId" className="field-base text-base" required>
-              {exerciseOptions.map((exercise) => (
+            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+              Body part
+            </span>
+            <select
+              value={addLiftCategory}
+              onChange={(event) => loadExerciseCategory(event.target.value)}
+              className="field-base text-base capitalize"
+            >
+              {bodyPartCategories.map((category) => (
+                <option key={category} value={category}>
+                  {formatExerciseCategory(category)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+              Exercise
+            </span>
+            <select
+              name="exerciseId"
+              className="field-base text-base"
+              disabled={
+                isLoadingExerciseOptions ||
+                (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0
+              }
+              required
+            >
+              {isLoadingExerciseOptions ? <option>Loading...</option> : null}
+              {!isLoadingExerciseOptions &&
+              (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0 ? (
+                <option>No exercises found</option>
+              ) : null}
+              {(exerciseOptionsByCategory[addLiftCategory] ?? []).map((exercise) => (
                 <option key={exercise.id} value={exercise.id}>
                   {exercise.name}
                   {exercise.is_builtin ? "" : " (custom)"}
@@ -608,6 +706,10 @@ export function ActiveWorkoutConsole({
             </select>
           </label>
           <FormSubmitButton
+            disabled={
+              isLoadingExerciseOptions ||
+              (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0
+            }
             pendingLabel="Adding..."
             className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
           >
@@ -962,39 +1064,29 @@ export function ActiveWorkoutConsole({
               ) : null}
 
               <div className="grid grid-cols-3 gap-2 border-t border-[color:var(--panel-border)] p-3">
-                <form action={addWorkoutSet}>
-                  <input
-                    type="hidden"
-                    name="workoutExerciseId"
-                    value={exercise.id}
-                  />
-                  <FormSubmitButton
-                    pendingLabel="Adding..."
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black"
-                  >
-                    <Plus aria-hidden="true" className="size-4" />
-                    Set
-                  </FormSubmitButton>
-                </form>
-                <form action={addWorkoutSet}>
-                  <input
-                    type="hidden"
-                    name="workoutExerciseId"
-                    value={exercise.id}
-                  />
-                  <input
-                    type="hidden"
-                    name="copySetId"
-                    value={exercise.sets.at(-1)?.id ?? ""}
-                  />
-                  <FormSubmitButton
-                    pendingLabel="Copying..."
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black"
-                  >
-                    <Repeat2 aria-hidden="true" className="size-4" />
-                    Copy
-                  </FormSubmitButton>
-                </form>
+                <button
+                  type="button"
+                  onClick={() => addSetToExercise(exercise.id)}
+                  disabled={pendingSetMutationId === exercise.id}
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black disabled:cursor-wait disabled:opacity-70"
+                >
+                  <Plus aria-hidden="true" className="size-4" />
+                  {pendingSetMutationId === exercise.id ? "Adding..." : "Set"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    addSetToExercise(exercise.id, exercise.sets.at(-1)?.id)
+                  }
+                  disabled={
+                    pendingSetMutationId === exercise.id ||
+                    exercise.sets.length === 0
+                  }
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Repeat2 aria-hidden="true" className="size-4" />
+                  {pendingSetMutationId === exercise.id ? "Copying..." : "Copy"}
+                </button>
                 <form action={removeWorkoutExercise}>
                   <input
                     type="hidden"

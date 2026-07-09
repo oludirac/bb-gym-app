@@ -18,6 +18,18 @@ const progressionStyles = new Set<ProgramProgressionStyle>([
 ]);
 type MoveDirection = "up" | "down";
 
+type InlineProgramSetInput = {
+  programExerciseId?: string;
+  programId?: string;
+  setId?: string;
+  targetDistanceKm?: number | string | null;
+  targetDurationMinutes?: number | string | null;
+  targetIntensity?: string | null;
+  targetRepsMax?: number | string | null;
+  targetRepsMin?: number | string | null;
+  targetWeightKg?: number | string | null;
+};
+
 function fieldValue(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -35,6 +47,22 @@ function optionalNumber(value: string) {
 
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function optionalNumberFromValue(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function optionalSecondsFromMinuteValue(
+  value: number | string | null | undefined
+) {
+  const minutes = optionalNumberFromValue(value);
+  return minutes === null ? null : Math.round(minutes * 60);
 }
 
 function optionalSecondsFromMinutes(value: string) {
@@ -857,6 +885,70 @@ export async function addProgramSet(formData: FormData) {
   redirect(`/programs/${programId}/edit`);
 }
 
+export async function addProgramSetInline(input: InlineProgramSetInput) {
+  const { supabase } = await requireUser();
+
+  if (!input.programExerciseId) {
+    return { error: "Missing lift.", ok: false };
+  }
+
+  const sortOrder = await nextSortOrder(
+    supabase,
+    "program_sets",
+    "program_exercise_id",
+    input.programExerciseId
+  );
+
+  const { data: previousSet } = await supabase
+    .from("program_sets")
+    .select(
+      "target_reps_min, target_reps_max, target_weight_kg, target_duration_seconds, target_distance_km, target_intensity"
+    )
+    .eq("program_exercise_id", input.programExerciseId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from("program_sets")
+    .insert({
+      program_exercise_id: input.programExerciseId,
+      set_type: "working",
+      sort_order: sortOrder,
+      target_distance_km: previousSet?.target_distance_km ?? null,
+      target_duration_seconds: previousSet?.target_duration_seconds ?? null,
+      target_intensity: previousSet?.target_intensity ?? null,
+      target_reps_min: previousSet?.target_reps_min ?? 8,
+      target_reps_max: previousSet?.target_reps_max ?? 10,
+      target_weight_kg: previousSet?.target_weight_kg ?? null
+    })
+    .select(
+      "id, notes, rest_seconds, set_type, sort_order, target_distance_km, target_duration_seconds, target_intensity, target_reps_min, target_reps_max, target_rir, target_rpe, target_weight_kg"
+    )
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "Could not add set.", ok: false };
+  }
+
+  if (input.programId) {
+    revalidatePath(`/programs/${input.programId}/edit`);
+  }
+
+  return {
+    ok: true,
+    set: {
+      ...data,
+      target_distance_km:
+        data.target_distance_km === null ? null : Number(data.target_distance_km),
+      target_rir: data.target_rir === null ? null : Number(data.target_rir),
+      target_rpe: data.target_rpe === null ? null : Number(data.target_rpe),
+      target_weight_kg:
+        data.target_weight_kg === null ? null : Number(data.target_weight_kg)
+    }
+  };
+}
+
 export async function updateProgramSet(formData: FormData) {
   const { supabase } = await requireUser();
   const programId = fieldValue(formData, "programId");
@@ -889,6 +981,53 @@ export async function updateProgramSet(formData: FormData) {
   redirect(`/programs/${programId}/edit`);
 }
 
+export async function updateProgramSetInline(input: InlineProgramSetInput) {
+  const { supabase } = await requireUser();
+
+  if (!input.setId) {
+    return { error: "Missing set.", ok: false };
+  }
+
+  const { data, error } = await supabase
+    .from("program_sets")
+    .update({
+      target_distance_km: optionalNumberFromValue(input.targetDistanceKm),
+      target_duration_seconds: optionalSecondsFromMinuteValue(
+        input.targetDurationMinutes
+      ),
+      target_intensity: input.targetIntensity?.trim() || null,
+      target_reps_max: optionalNumberFromValue(input.targetRepsMax),
+      target_reps_min: optionalNumberFromValue(input.targetRepsMin),
+      target_weight_kg: optionalNumberFromValue(input.targetWeightKg)
+    })
+    .eq("id", input.setId)
+    .select(
+      "id, notes, rest_seconds, set_type, sort_order, target_distance_km, target_duration_seconds, target_intensity, target_reps_min, target_reps_max, target_rir, target_rpe, target_weight_kg"
+    )
+    .single();
+
+  if (error || !data) {
+    return { error: error?.message ?? "Could not update set.", ok: false };
+  }
+
+  if (input.programId) {
+    revalidatePath(`/programs/${input.programId}/edit`);
+  }
+
+  return {
+    ok: true,
+    set: {
+      ...data,
+      target_distance_km:
+        data.target_distance_km === null ? null : Number(data.target_distance_km),
+      target_rir: data.target_rir === null ? null : Number(data.target_rir),
+      target_rpe: data.target_rpe === null ? null : Number(data.target_rpe),
+      target_weight_kg:
+        data.target_weight_kg === null ? null : Number(data.target_weight_kg)
+    }
+  };
+}
+
 export async function deleteProgramSet(formData: FormData) {
   const { supabase } = await requireUser();
   const programId = fieldValue(formData, "programId");
@@ -900,6 +1039,29 @@ export async function deleteProgramSet(formData: FormData) {
 
   revalidatePath(`/programs/${programId}/edit`);
   redirect(programId ? `/programs/${programId}/edit` : "/programs");
+}
+
+export async function deleteProgramSetInline(input: InlineProgramSetInput) {
+  const { supabase } = await requireUser();
+
+  if (!input.setId) {
+    return { error: "Missing set.", ok: false };
+  }
+
+  const { error } = await supabase
+    .from("program_sets")
+    .delete()
+    .eq("id", input.setId);
+
+  if (error) {
+    return { error: error.message, ok: false };
+  }
+
+  if (input.programId) {
+    revalidatePath(`/programs/${input.programId}/edit`);
+  }
+
+  return { ok: true };
 }
 
 export async function copyProgram(formData: FormData) {
@@ -1207,6 +1369,55 @@ export async function removeProgram(formData: FormData) {
   revalidatePath(`/programs/${program.id}/edit`);
   revalidatePath("/programs/active");
   redirect("/programs");
+}
+
+export async function dismissMissedProgramDay(formData: FormData) {
+  const { supabase, user } = await requireUser();
+  const enrollmentId = fieldValue(formData, "enrollmentId");
+  const programDayId = fieldValue(formData, "programDayId");
+  const scheduledFor = fieldValue(formData, "scheduledFor");
+
+  if (!enrollmentId || !programDayId || !scheduledFor) {
+    redirect("/dashboard");
+  }
+
+  const { data: enrollment } = await supabase
+    .from("program_enrollments")
+    .select("id, program_id")
+    .eq("id", enrollmentId)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!enrollment) {
+    redirect("/dashboard");
+  }
+
+  const program = await getProgramDetail(supabase, enrollment.program_id);
+  const programDay = program?.weeks
+    .flatMap((week) => week.days)
+    .find((day) => day.id === programDayId);
+
+  if (!programDay) {
+    redirect("/dashboard");
+  }
+
+  await supabase.from("dismissed_program_day_misses").upsert(
+    {
+      program_day_id: programDay.id,
+      program_enrollment_id: enrollment.id,
+      scheduled_for: scheduledFor,
+      user_id: user.id
+    },
+    {
+      onConflict: "user_id,program_enrollment_id,program_day_id,scheduled_for"
+    }
+  );
+
+  revalidatePath("/dashboard");
+  revalidatePath("/programs/active");
+  revalidatePath("/progress");
+  redirect("/dashboard");
 }
 
 export async function startWorkoutFromProgramDay(formData: FormData) {

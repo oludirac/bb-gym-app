@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Plus } from "lucide-react";
+import { getExerciseOptionsForCategory } from "@/app/(app)/workouts/actions";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   bodyPartCategories,
@@ -10,7 +11,6 @@ import {
 import type { ExerciseOption } from "@/lib/workouts/queries";
 
 type ProgramExercisePickerProps = {
-  exerciseOptions: ExerciseOption[];
   programDayId: string;
   programId: string;
   action: (formData: FormData) => void | Promise<void>;
@@ -21,28 +21,50 @@ const repRanges = ["4-6", "8-10", "10-12", "12-15", "custom"];
 
 export function ProgramExercisePicker({
   action,
-  exerciseOptions,
   programDayId,
   programId,
   recommendMainLift
 }: ProgramExercisePickerProps) {
-  const categories = useMemo(
-    () =>
-      bodyPartCategories.filter((category) =>
-        exerciseOptions.some((exercise) => exercise.category === category)
-      ),
-    [exerciseOptions]
-  );
-  const [category, setCategory] = useState<string>(categories[0] ?? "chest");
+  const [category, setCategory] = useState<string>("chest");
+  const [optionsByCategory, setOptionsByCategory] = useState<
+    Record<string, ExerciseOption[]>
+  >({});
+  const [isLoadingOptions, startOptionsTransition] = useTransition();
   const [progressionStyle, setProgressionStyle] =
     useState("double_progression");
   const [repRange, setRepRange] = useState("8-10");
   const [topRepRange, setTopRepRange] = useState("4-6");
   const [backoffRepRange, setBackoffRepRange] = useState("8-10");
   const isCardio = category === "cardio";
-  const filteredExercises = exerciseOptions.filter(
-    (exercise) => exercise.category === category
-  );
+  const filteredExercises = optionsByCategory[category] ?? [];
+
+  function fetchCategory(nextCategory: string) {
+    if (optionsByCategory[nextCategory]) {
+      return;
+    }
+
+    startOptionsTransition(async () => {
+      const result = await getExerciseOptionsForCategory(nextCategory);
+
+      if (result.ok) {
+        setOptionsByCategory((current) => ({
+          ...current,
+          [nextCategory]: result.options
+        }));
+      }
+    });
+  }
+
+  function loadCategory(nextCategory: string) {
+    setCategory(nextCategory);
+    fetchCategory(nextCategory);
+  }
+
+  useEffect(() => {
+    fetchCategory(category);
+    // The first load should only run once for the initial category.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <form action={action} className="app-card-flat grid gap-3 p-3">
@@ -55,11 +77,11 @@ export function ProgramExercisePicker({
         <select
           name="exerciseCategory"
           value={category}
-          onChange={(event) => setCategory(event.target.value)}
+          onChange={(event) => loadCategory(event.target.value)}
           className="field-base text-base capitalize"
           required
         >
-          {categories.map((item) => (
+          {bodyPartCategories.map((item) => (
             <option key={item} value={item}>
               {formatExerciseCategory(item)}
             </option>
@@ -70,7 +92,16 @@ export function ProgramExercisePicker({
         <span className="text-xs font-black uppercase text-[color:var(--muted)]">
           Exercise
         </span>
-        <select name="exerciseId" className="field-base text-base" required>
+        <select
+          name="exerciseId"
+          className="field-base text-base"
+          disabled={isLoadingOptions || filteredExercises.length === 0}
+          required
+        >
+          {isLoadingOptions ? <option>Loading...</option> : null}
+          {!isLoadingOptions && filteredExercises.length === 0 ? (
+            <option>No exercises found</option>
+          ) : null}
           {filteredExercises.map((exercise) => (
             <option key={exercise.id} value={exercise.id}>
               {exercise.name}
@@ -343,7 +374,10 @@ export function ProgramExercisePicker({
           </div>
         )}
       </div>
-      <FormSubmitButton pendingLabel="Adding...">
+      <FormSubmitButton
+        disabled={isLoadingOptions || filteredExercises.length === 0}
+        pendingLabel="Adding..."
+      >
         <Plus aria-hidden="true" className="size-4" />
         Add lift
       </FormSubmitButton>

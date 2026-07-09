@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { CopyPromptButton } from "@/components/copy-prompt-button";
+import { CsvInputTools } from "@/components/csv-input-tools";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { importProgramCsv } from "@/app/(app)/import/programs/actions";
 import { getRecentProgramImports } from "@/lib/imports/queries";
 import { requireUser } from "@/lib/auth/session";
 
-const sampleCsv = `program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,duration_minutes,distance_km,intensity
-My Imported Plan,Push,Barbell Bench Press,chest,1,6,8,60,,,
-My Imported Plan,Push,Barbell Bench Press,chest,2,6,8,60,,,
-My Imported Plan,Cardio,Treadmill Run,cardio,1,,,,20,3,RPE 7`;
+const sampleCsv = `program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,progression_style,weight_increment_kg,track_as_main_lift,duration_minutes,distance_km,intensity
+My Imported Plan,Push,Barbell Bench Press,chest,1,6,8,60,double_progression,2.5,true,,,
+My Imported Plan,Push,Barbell Bench Press,chest,2,6,8,60,double_progression,2.5,true,,,
+My Imported Plan,Cardio,Treadmill Run,cardio,1,,,,fixed,0,false,20,3,RPE 7`;
 
 const csvPrompt = `Turn the workout plan below into a CSV for my gym app.
 
 Use exactly these columns:
-program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,duration_minutes,distance_km,intensity
+program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,progression_style,weight_increment_kg,track_as_main_lift,duration_minutes,distance_km,intensity
 
 Rules:
 - Return only raw CSV. No markdown, no code fence, no explanation.
@@ -27,6 +28,9 @@ Rules:
 - For lifting rows, use reps_min, reps_max, and weight_kg. If weight is unknown, leave weight_kg blank.
 - For cardio rows, leave reps_min, reps_max, and weight_kg blank. Use duration_minutes, distance_km, and/or intensity.
 - intensity is short text like RPE 7, level 8, or 2% incline.
+- progression_style must be double_progression, top_set_backoff, or fixed.
+- weight_increment_kg should usually be 1.25, 2.5, or 5. Use 0 for cardio.
+- track_as_main_lift should be true only for the main 1-2 weighted lifts.
 - Use simple exercise names.
 - Use double progression: give each lift a reps_min and reps_max range.
 - Repeat the same starting weight for sets that should progress together.
@@ -36,13 +40,15 @@ Workout plan:
 [paste workout here]`;
 
 const createPlanPrompt = `Ask me up to 5 quick questions, then create a simple gym plan CSV using these columns:
-program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,duration_minutes,distance_km,intensity
+program_name,day_name,exercise_name,category,set_number,reps_min,reps_max,weight_kg,progression_style,weight_increment_kg,track_as_main_lift,duration_minutes,distance_km,intensity
 
 Rules:
 - Return only raw CSV when done.
 - Use kg only.
 - category must be one of: chest, back, shoulders, biceps, triceps, quads, hamstrings, glutes, calves, core, cardio, mobility, full_body.
 - Use double progression with rep ranges.
+- Use progression_style double_progression for normal lifts and fixed for cardio.
+- Mark the main 1-2 weighted lifts per day as track_as_main_lift true.
 - For cardio rows, use duration_minutes, distance_km, and/or intensity instead of reps and weight.
 - Use one row per set.
 - Keep it practical and use common exercises.`;
@@ -117,12 +123,14 @@ export default async function ProgramImportPage() {
         <label className="grid gap-2">
           <span className="text-sm font-medium">CSV</span>
           <textarea
+            id="program-csv-input"
             name="csv"
             rows={12}
             defaultValue={sampleCsv}
             className="w-full rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 py-3 font-mono text-xs leading-5 outline-none focus:border-[color:var(--accent)]"
           />
         </label>
+        <CsvInputTools textareaId="program-csv-input" />
         <FormSubmitButton pendingLabel="Importing...">
           Import plan
         </FormSubmitButton>

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { bodyPartCategorySet } from "@/lib/exercises/categories";
 import { getProgramDetail } from "@/lib/programs/queries";
 
 function fieldValue(formData: FormData, key: string) {
@@ -48,6 +49,11 @@ type InlineWorkoutSetInput = {
   restSeconds?: number | string | null;
   setId: string;
   weightKg?: number | string | null;
+};
+
+type InlineWorkoutSetMutationInput = {
+  copySetId?: string | null;
+  workoutExerciseId: string;
 };
 
 async function nextSortOrder(
@@ -395,6 +401,27 @@ export async function saveWorkoutSetWeightAsPlanWeight(input: {
   return { ok: true };
 }
 
+export async function getExerciseOptionsForCategory(category: string) {
+  const { supabase } = await requireUser();
+
+  if (!bodyPartCategorySet.has(category)) {
+    return { ok: false, options: [] };
+  }
+
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("id, name, is_builtin, category")
+    .eq("category", category)
+    .is("deleted_at", null)
+    .order("name", { ascending: true });
+
+  if (error) {
+    return { ok: false, options: [] };
+  }
+
+  return { ok: true, options: data ?? [] };
+}
+
 export async function startBlankWorkout() {
   const { supabase, user } = await requireUser();
   const { data: existing } = await supabase
@@ -505,6 +532,81 @@ export async function addWorkoutSet(formData: FormData) {
 
   revalidatePath("/workouts/active");
   redirect("/workouts/active");
+}
+
+export async function addWorkoutSetInline(input: InlineWorkoutSetMutationInput) {
+  const { supabase } = await requireUser();
+
+  if (!input.workoutExerciseId) {
+    return { error: "Missing workout exercise.", ok: false };
+  }
+
+  const sortOrder = await nextSortOrder(
+    supabase,
+    "workout_sets",
+    "workout_exercise_id",
+    input.workoutExerciseId
+  );
+  let copiedSet = null;
+
+  if (input.copySetId) {
+    const { data } = await supabase
+      .from("workout_sets")
+      .select(
+        "set_type, weight_kg, reps, duration_seconds, distance_km, intensity, rpe, rir, rest_seconds, notes"
+      )
+      .eq("id", input.copySetId)
+      .maybeSingle();
+    copiedSet = data;
+  }
+
+  const { data, error } = await supabase
+    .from("workout_sets")
+    .insert({
+      completed_at: null,
+      distance_km: copiedSet?.distance_km ?? null,
+      duration_seconds: copiedSet?.duration_seconds ?? null,
+      intensity: copiedSet?.intensity ?? null,
+      reps: copiedSet?.reps ?? null,
+      rest_seconds: copiedSet?.rest_seconds ?? null,
+      rir: copiedSet?.rir ?? null,
+      rpe: copiedSet?.rpe ?? null,
+      set_type: copiedSet?.set_type ?? "working",
+      sort_order: sortOrder,
+      weight_kg: copiedSet?.weight_kg ?? null,
+      workout_exercise_id: input.workoutExerciseId
+    })
+    .select(
+      "id, program_set_id, sort_order, set_type, duration_seconds, distance_km, intensity, weight_kg, reps, rest_seconds, rpe, rir, notes, completed_at"
+    )
+    .single();
+
+  if (error || !data) {
+    return {
+      error: error?.message ?? "Could not add set.",
+      ok: false
+    };
+  }
+
+  revalidatePath("/workouts/active");
+  return {
+    ok: true,
+    set: {
+      ...data,
+      distance_km: data.distance_km === null ? null : Number(data.distance_km),
+      previous_reps: null,
+      previous_weight_kg: null,
+      rir: data.rir === null ? null : Number(data.rir),
+      rpe: data.rpe === null ? null : Number(data.rpe),
+      target_distance_km: null,
+      target_duration_seconds: null,
+      target_intensity: null,
+      target_reps_max: null,
+      target_reps_min: null,
+      target_weight_kg: null,
+      weight_kg: data.weight_kg === null ? null : Number(data.weight_kg)
+    }
+  };
 }
 
 export async function saveWorkoutSet(formData: FormData) {

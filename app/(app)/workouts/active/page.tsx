@@ -3,15 +3,12 @@ import { Dumbbell, History, Plus } from "lucide-react";
 import { ActiveWorkoutConsole } from "@/components/active-workout-console";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { startBlankWorkout } from "@/app/(app)/workouts/actions";
-import { getActiveWorkout, getExerciseOptions } from "@/lib/workouts/queries";
+import { getActiveWorkout } from "@/lib/workouts/queries";
 import { requireUser } from "@/lib/auth/session";
 
 export default async function ActiveWorkoutPage() {
   const { settings, supabase } = await requireUser();
-  const [activeWorkout, exerciseOptions] = await Promise.all([
-    getActiveWorkout(supabase),
-    getExerciseOptions(supabase)
-  ]);
+  const activeWorkout = await getActiveWorkout(supabase);
   const defaultRestSeconds = settings?.default_rest_seconds ?? 120;
 
   if (!activeWorkout) {
@@ -69,7 +66,6 @@ export default async function ActiveWorkoutPage() {
       key={`${activeWorkout.id}:${workoutStructureKey}`}
       activeWorkout={activeWorkout}
       defaultRestSeconds={defaultRestSeconds}
-      exerciseOptions={exerciseOptions}
     />
   );
 }

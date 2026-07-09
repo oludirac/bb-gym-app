@@ -621,20 +621,36 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
       .sort((a, b) => b.scheduled_for.localeCompare(a.scheduled_for));
     let missed: TodayPlanOverview["missed"] = null;
     let completedMissedKeys = new Set<string>();
+    let dismissedMissedKeys = new Set<string>();
 
     if (previousMatches.length > 0) {
-      const { data: completedRows } = await supabase
-        .from("workouts")
-        .select("program_day_id, scheduled_for")
-        .eq("program_enrollment_id", enrollment.id)
-        .eq("status", "completed")
-        .in(
-          "scheduled_for",
-          previousMatches.map((item) => item.scheduled_for)
-        );
+      const previousScheduledDates = previousMatches.map(
+        (item) => item.scheduled_for
+      );
+      const [completedRowsResult, dismissedRowsResult] = await Promise.all([
+        supabase
+          .from("workouts")
+          .select("program_day_id, scheduled_for")
+          .eq("program_enrollment_id", enrollment.id)
+          .eq("status", "completed")
+          .in("scheduled_for", previousScheduledDates),
+        supabase
+          .from("dismissed_program_day_misses")
+          .select("program_day_id, scheduled_for")
+          .eq("program_enrollment_id", enrollment.id)
+          .in("scheduled_for", previousScheduledDates)
+      ]);
 
       completedMissedKeys = new Set(
-        ((completedRows ?? []) as {
+        ((completedRowsResult.data ?? []) as {
+          program_day_id: string | null;
+          scheduled_for: string | null;
+        }[])
+          .filter((row) => row.program_day_id && row.scheduled_for)
+          .map((row) => `${row.program_day_id}:${row.scheduled_for}`)
+      );
+      dismissedMissedKeys = new Set(
+        ((dismissedRowsResult.data ?? []) as {
           program_day_id: string | null;
           scheduled_for: string | null;
         }[])
@@ -644,7 +660,11 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
     }
 
     for (const item of previousMatches) {
-      if (!completedMissedKeys.has(`${item.day.id}:${item.scheduled_for}`)) {
+      const missedKey = `${item.day.id}:${item.scheduled_for}`;
+      if (
+        !completedMissedKeys.has(missedKey) &&
+        !dismissedMissedKeys.has(missedKey)
+      ) {
         missed = {
           day: item.day,
           scheduled_for: item.scheduled_for,

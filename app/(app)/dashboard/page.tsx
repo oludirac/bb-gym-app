@@ -10,9 +10,12 @@ import {
 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { startBlankWorkout } from "@/app/(app)/workouts/actions";
-import { startWorkoutFromProgramDay } from "@/app/(app)/programs/actions";
+import {
+  dismissMissedProgramDay,
+  startWorkoutFromProgramDay
+} from "@/app/(app)/programs/actions";
 import { getTodayPlanOverview } from "@/lib/programs/queries";
-import { getActiveWorkout } from "@/lib/workouts/queries";
+import { getActiveWorkoutSummary } from "@/lib/workouts/queries";
 import { requireUser } from "@/lib/auth/session";
 import { weekdayLabel } from "@/lib/scheduling/weekdays";
 
@@ -50,7 +53,7 @@ function formatTodayDate() {
 export default async function DashboardPage() {
   const { supabase } = await requireUser();
   const [activeWorkout, todayPlan] = await Promise.all([
-    getActiveWorkout(supabase),
+    getActiveWorkoutSummary(supabase),
     getTodayPlanOverview(supabase)
   ]);
   const dueDay = todayPlan?.program_day;
@@ -185,26 +188,51 @@ export default async function DashboardPage() {
                 {formatDayDate(todayPlan.missed.scheduled_for)}. Train it now
                 or leave it missed.
               </p>
-              <form action={startWorkoutFromProgramDay} className="mt-3">
-                <input
-                  type="hidden"
-                  name="enrollmentId"
-                  value={todayPlan.enrollment_id}
-                />
-                <input
-                  type="hidden"
-                  name="programDayId"
-                  value={todayPlan.missed.day.id}
-                />
-                <input
-                  type="hidden"
-                  name="scheduledFor"
-                  value={todayPlan.missed.scheduled_for}
-                />
-                <FormSubmitButton pendingLabel="Starting...">
-                  Start missed lift
-                </FormSubmitButton>
-              </form>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <form action={startWorkoutFromProgramDay}>
+                  <input
+                    type="hidden"
+                    name="enrollmentId"
+                    value={todayPlan.enrollment_id}
+                  />
+                  <input
+                    type="hidden"
+                    name="programDayId"
+                    value={todayPlan.missed.day.id}
+                  />
+                  <input
+                    type="hidden"
+                    name="scheduledFor"
+                    value={todayPlan.missed.scheduled_for}
+                  />
+                  <FormSubmitButton pendingLabel="Starting...">
+                    Start missed lift
+                  </FormSubmitButton>
+                </form>
+                <form action={dismissMissedProgramDay}>
+                  <input
+                    type="hidden"
+                    name="enrollmentId"
+                    value={todayPlan.enrollment_id}
+                  />
+                  <input
+                    type="hidden"
+                    name="programDayId"
+                    value={todayPlan.missed.day.id}
+                  />
+                  <input
+                    type="hidden"
+                    name="scheduledFor"
+                    value={todayPlan.missed.scheduled_for}
+                  />
+                  <FormSubmitButton
+                    pendingLabel="Dismissing..."
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-base font-extrabold text-[color:var(--text)] transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                  >
+                    Dismiss
+                  </FormSubmitButton>
+                </form>
+              </div>
             </div>
           </div>
         </section>

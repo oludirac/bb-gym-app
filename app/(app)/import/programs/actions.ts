@@ -42,6 +42,11 @@ const allowedProgramCategories = new Set([
 
 const allowedDifficulties = new Set(["beginner", "intermediate", "advanced"]);
 const allowedSetTypes = new Set(["warmup", "working", "drop", "failure"]);
+const allowedProgressionStyles = new Set([
+  "double_progression",
+  "fixed",
+  "top_set_backoff"
+]);
 
 type CsvRow = Record<string, string>;
 
@@ -55,6 +60,7 @@ type ParsedProgramRow = {
   exerciseId: string;
   exerciseName: string;
   notes: string | null;
+  progressionStyle: string;
   repsMax: number | null;
   repsMin: number | null;
   restSeconds: number | null;
@@ -64,7 +70,9 @@ type ParsedProgramRow = {
   rpe: number | null;
   setOrder: number;
   setType: string;
+  trackAsMainLift: boolean;
   weightKg: number | null;
+  weightIncrementKg: number;
   week: number;
 };
 
@@ -102,6 +110,20 @@ function positiveInteger(value: string) {
 
 function normalizeEnumValue(value: string) {
   return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+function optionalBoolean(value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  if (["1", "true", "yes", "y"].includes(normalized)) {
+    return true;
+  }
+
+  if (["0", "false", "no", "n"].includes(normalized)) {
+    return false;
+  }
+
+  return null;
 }
 
 function slugify(value: string) {
@@ -293,6 +315,13 @@ export async function importProgramCsv(formData: FormData) {
     const exerciseCategory = normalizeEnumValue(
       cell(row, "category", "exercise_category")
     );
+    const progressionStyle = normalizeEnumValue(
+      row.progression_style || "double_progression"
+    );
+    const weightIncrementKg =
+      optionalNumber(row.weight_increment_kg ?? "") ??
+      (exerciseCategory === "cardio" ? 0 : 2.5);
+    const trackAsMainLift = optionalBoolean(row.track_as_main_lift ?? "") ?? false;
     const programCategory = row.program_category
       ? normalizeEnumValue(row.program_category)
       : null;
@@ -364,6 +393,17 @@ export async function importProgramCsv(formData: FormData) {
         code: "invalid_enum",
         field: "set_type",
         message: "set_type must be warmup, working, drop, or failure.",
+        raw_row: row,
+        row_number: rowNumber
+      });
+    }
+
+    if (!allowedProgressionStyles.has(progressionStyle)) {
+      errors.push({
+        code: "invalid_enum",
+        field: "progression_style",
+        message:
+          "progression_style must be double_progression, top_set_backoff, or fixed.",
         raw_row: row,
         row_number: rowNumber
       });
@@ -441,6 +481,7 @@ export async function importProgramCsv(formData: FormData) {
         exerciseId,
         exerciseName,
         notes: row.notes || null,
+        progressionStyle,
         repsMax,
         repsMin,
         restSeconds: optionalNumber(row.rest_seconds ?? ""),
@@ -450,11 +491,13 @@ export async function importProgramCsv(formData: FormData) {
         rpe: optionalNumber(row.rpe ?? ""),
         setOrder,
         setType,
+        trackAsMainLift,
         weightKg:
           weightKg ??
           (legacyWeight === null
             ? null
             : displayUnitToKg(legacyWeight, weightUnit)),
+        weightIncrementKg,
         week
       });
     }
@@ -545,7 +588,10 @@ export async function importProgramCsv(formData: FormData) {
             exercise_id: firstExerciseRow.exerciseId,
             notes: firstExerciseRow.notes,
             program_day_id: day.id,
-            sort_order: exerciseIndex + 1
+            progression_style: firstExerciseRow.progressionStyle,
+            sort_order: exerciseIndex + 1,
+            track_as_main_lift: firstExerciseRow.trackAsMainLift,
+            weight_increment_kg: firstExerciseRow.weightIncrementKg
           })
           .select("id")
           .single();
