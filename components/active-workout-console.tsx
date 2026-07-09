@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowDown,
+  ArrowUp,
   Check,
   Flag,
   History,
   Plus,
   Repeat2,
   RotateCcw,
+  Settings,
   Trash2,
   X
 } from "lucide-react";
@@ -20,8 +23,10 @@ import {
   cancelActiveWorkout,
   completeWorkoutSetInline,
   finishWorkout,
+  moveWorkoutExerciseInline,
   removeWorkoutExercise,
-  undoWorkoutSetInline
+  saveWorkoutSetWeightAsPlanWeight,
+  undoWorkoutSetInline,
 } from "@/app/(app)/workouts/actions";
 import type {
   ExerciseOption,
@@ -352,6 +357,7 @@ export function ActiveWorkoutConsole({
     setId: null
   }));
   const [savingSetId, setSavingSetId] = useState<string | null>(null);
+  const [isReordering, startReorderTransition] = useTransition();
   const [expandedCompleted, setExpandedCompleted] = useState<Set<string>>(
     () => new Set()
   );
@@ -508,6 +514,63 @@ export function ActiveWorkoutConsole({
     router.refresh();
   };
 
+  const moveExercise = (
+    workoutExerciseId: string,
+    direction: "down" | "later" | "up"
+  ) => {
+    setWorkout((current) => {
+      const exercises = [...current.workoutExercises];
+      const currentIndex = exercises.findIndex(
+        (exercise) => exercise.id === workoutExerciseId
+      );
+
+      if (currentIndex === -1) {
+        return current;
+      }
+
+      if (direction === "later") {
+        const [item] = exercises.splice(currentIndex, 1);
+        exercises.push(item);
+      } else {
+        const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+        if (!exercises[targetIndex]) {
+          return current;
+        }
+
+        [exercises[currentIndex], exercises[targetIndex]] = [
+          exercises[targetIndex],
+          exercises[currentIndex]
+        ];
+      }
+
+      return {
+        ...current,
+        workoutExercises: exercises.map((exercise, index) => ({
+          ...exercise,
+          sort_order: index + 1
+        }))
+      };
+    });
+
+    startReorderTransition(async () => {
+      await moveWorkoutExerciseInline({ direction, workoutExerciseId });
+      router.refresh();
+    });
+  };
+
+  const savePlanWeight = async () => {
+    if (!currentSet?.program_set_id) {
+      return;
+    }
+
+    await saveWorkoutSetWeightAsPlanWeight({
+      programSetId: currentSet.program_set_id,
+      weightKg: draft.weightKg
+    });
+    router.refresh();
+  };
+
   return (
     <div className="space-y-5 pb-44">
       <header className="app-card p-5">
@@ -653,42 +716,89 @@ export function ActiveWorkoutConsole({
                 </label>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-1">
-                  <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-                    Kg
-                  </span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.25"
-                    value={draft.weightKg}
-                    onChange={(event) =>
-                      updateDraft({
-                        weightKg: event.target.value
-                      })
-                    }
-                    className="field-base min-h-16 text-center text-3xl font-black"
-                  />
-                </label>
-                <label className="grid gap-1">
-                  <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+              <div className="grid gap-3">
+                <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+                  <p className="text-xs font-black uppercase text-[color:var(--muted)]">
+                    Planned weight
+                  </p>
+                  <p className="mt-1 text-4xl font-black">
+                    {draft.weightKg || "-"}kg
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-[color:var(--muted)]">
+                    {targetLabel(currentSet, false)}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+                  <p className="text-xs font-black uppercase text-[color:var(--muted)]">
                     Reps
-                  </span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    value={draft.reps}
-                    onChange={(event) =>
-                      updateDraft({
-                        reps: event.target.value
-                      })
-                    }
-                    className="field-base min-h-16 text-center text-3xl font-black"
-                  />
-                </label>
+                  </p>
+                  <div className="mt-2 grid grid-cols-[3.5rem_1fr_3.5rem] items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateDraft({
+                          reps: String(Math.max(0, Number(draft.reps || 0) - 1))
+                        })
+                      }
+                      className="grid min-h-14 place-items-center rounded-2xl border border-[color:var(--panel-border)] text-3xl font-black"
+                    >
+                      -
+                    </button>
+                    <div className="grid min-h-16 place-items-center rounded-2xl bg-[color:var(--panel)] text-4xl font-black">
+                      {draft.reps || "0"}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateDraft({
+                          reps: String(Number(draft.reps || 0) + 1)
+                        })
+                      }
+                      className="grid min-h-14 place-items-center rounded-2xl border border-[color:var(--panel-border)] text-3xl font-black"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                <details className="rounded-2xl border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-3">
+                  <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between text-sm font-black text-[color:var(--muted)]">
+                    <span className="inline-flex items-center gap-2">
+                      <Settings aria-hidden="true" className="size-4" />
+                      Advanced
+                    </span>
+                    Override
+                  </summary>
+                  <div className="mt-3 grid gap-2">
+                    <label className="grid gap-1">
+                      <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                        Override kg
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.25"
+                        value={draft.weightKg}
+                        onChange={(event) =>
+                          updateDraft({
+                            weightKg: event.target.value
+                          })
+                        }
+                        className="field-base min-h-12 text-center text-xl font-black"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={savePlanWeight}
+                      disabled={!currentSet.program_set_id}
+                      className="min-h-11 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Use as new plan weight
+                    </button>
+                  </div>
+                </details>
               </div>
             )}
 
@@ -726,9 +836,15 @@ export function ActiveWorkoutConsole({
         </section>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-lg font-black">Workout</h2>
-        {workout.workoutExercises.map((exercise) => {
+      <details className="app-card-flat p-3">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black">
+          Full workout
+          <span className="text-xs text-[color:var(--muted)]">
+            Add, reorder, edit
+          </span>
+        </summary>
+        <div className="mt-3 space-y-3">
+        {workout.workoutExercises.map((exercise, index) => {
           const done = completedCount(exercise);
           const isExpanded = expandedCompleted.has(exercise.id);
           const isComplete = done === exercise.sets.length && exercise.sets.length > 0;
@@ -748,6 +864,38 @@ export function ActiveWorkoutConsole({
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => moveExercise(exercise.id, "up")}
+                    disabled={index === 0 || isReordering}
+                    className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Move exercise up today"
+                  >
+                    <ArrowUp aria-hidden="true" className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveExercise(exercise.id, "down")}
+                    disabled={
+                      index === workout.workoutExercises.length - 1 ||
+                      isReordering
+                    }
+                    className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Move exercise down today"
+                  >
+                    <ArrowDown aria-hidden="true" className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveExercise(exercise.id, "later")}
+                    disabled={
+                      index === workout.workoutExercises.length - 1 ||
+                      isReordering
+                    }
+                    className="min-h-10 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+                  >
+                    Later
+                  </button>
                   {isComplete ? (
                     <button
                       type="button"
@@ -865,7 +1013,8 @@ export function ActiveWorkoutConsole({
             </article>
           );
         })}
-      </section>
+        </div>
+      </details>
 
       <div className="fixed inset-x-0 bottom-[5.75rem] z-20 px-4">
         <div className="mx-auto grid max-w-md grid-cols-[1fr_auto] gap-2 rounded-2xl border border-[color:var(--panel-border)] bg-[#080a0d]/95 p-2 shadow-[0_16px_42px_rgba(0,0,0,0.45)] backdrop-blur-xl">

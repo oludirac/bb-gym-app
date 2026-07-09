@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ProgramScheduleType = "calendar" | "sequence";
+export type ProgramProgressionStyle =
+  | "double_progression"
+  | "fixed"
+  | "top_set_backoff";
 
 export type ProgramDaySchedule = {
   id: string;
@@ -30,8 +34,11 @@ export type ProgramExercise = {
   exercise_name: string;
   id: string;
   notes: string | null;
+  progression_style: ProgramProgressionStyle;
   sets: ProgramSet[];
   sort_order: number;
+  track_as_main_lift: boolean;
+  weight_increment_kg: number;
 };
 
 export type ProgramDay = {
@@ -82,6 +89,7 @@ export type ProgramSummary = {
 };
 
 export type ActiveProgramEnrollment = {
+  block_length_weeks: number;
   completed_workouts: number;
   current_day: number;
   current_week: number;
@@ -113,6 +121,7 @@ export type TodayPlanOverview = {
 };
 
 type RawActiveProgramEnrollment = {
+  block_length_weeks: number | null;
   current_day: number;
   current_week: number;
   id: string;
@@ -157,8 +166,11 @@ type RawProgramExercise = {
     | null;
   id: string;
   notes: string | null;
+  progression_style: ProgramProgressionStyle | null;
   program_sets?: RawProgramSet[] | null;
   sort_order: number;
+  track_as_main_lift: boolean | null;
+  weight_increment_kg: number | null;
 };
 
 type RawProgramDay = {
@@ -222,14 +234,17 @@ const programDetailSelect = `
       name,
       focus,
       notes,
-      program_exercises (
-        id,
-        exercise_id,
-        sort_order,
-        notes,
-        exercises (
-          category,
-          name
+        program_exercises (
+          id,
+          exercise_id,
+          sort_order,
+          notes,
+          progression_style,
+          weight_increment_kg,
+          track_as_main_lift,
+          exercises (
+            category,
+            name
         ),
         program_sets (
           id,
@@ -320,10 +335,17 @@ function mapProgram(raw: RawProgram): ProgramDetail {
           exercise_name: firstExerciseName(exercise.exercises),
           id: exercise.id,
           notes: exercise.notes,
+          progression_style:
+            exercise.progression_style ?? "double_progression",
           sets: sortByOrder(exercise.program_sets ?? [], "sort_order").map(
             mapProgramSet
           ),
-          sort_order: exercise.sort_order
+          sort_order: exercise.sort_order,
+          track_as_main_lift: exercise.track_as_main_lift ?? false,
+          weight_increment_kg:
+            exercise.weight_increment_kg === null
+              ? 2.5
+              : Number(exercise.weight_increment_kg)
         })),
         focus: day.focus,
         id: day.id,
@@ -430,6 +452,7 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
         program_id,
         started_on,
         status,
+        block_length_weeks,
         current_week,
         current_day,
         programs (
@@ -474,6 +497,7 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
 
   return {
     completed_workouts: completedWorkouts,
+    block_length_weeks: enrollment.block_length_weeks ?? 12,
     current_day: enrollment.current_day,
     current_week: enrollment.current_week,
     id: enrollment.id,
@@ -528,6 +552,7 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
         program_id,
         started_on,
         status,
+        block_length_weeks,
         current_week,
         current_day,
         programs (

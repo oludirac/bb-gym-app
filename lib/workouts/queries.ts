@@ -9,6 +9,7 @@ export type WorkoutSet = {
   notes: string | null;
   previous_reps: number | null;
   previous_weight_kg: number | null;
+  program_set_id: string | null;
   reps: number | null;
   rest_seconds: number | null;
   rir: number | null;
@@ -30,6 +31,7 @@ export type WorkoutExercise = {
   exercise_name_snapshot: string;
   id: string;
   notes: string | null;
+  program_exercise_id: string | null;
   sets: WorkoutSet[];
   sort_order: number;
 };
@@ -60,6 +62,7 @@ type RawWorkoutSet = {
   id: string;
   intensity: string | null;
   notes: string | null;
+  program_set_id: string | null;
   reps: number | null;
   rest_seconds: number | null;
   rir: number | null;
@@ -82,6 +85,7 @@ type RawWorkoutExercise = {
   exercise_name_snapshot: string;
   id: string;
   notes: string | null;
+  program_exercise_id: string | null;
   sort_order: number;
   workout_sets?: RawWorkoutSet[] | null;
 };
@@ -99,6 +103,7 @@ type RawWorkout = {
 };
 
 type RawProgramSetTarget = {
+  id: string;
   sort_order: number;
   target_distance_km: number | null;
   target_duration_seconds: number | null;
@@ -144,6 +149,7 @@ const workoutSelect = `
   workout_exercises (
     id,
     exercise_id,
+    program_exercise_id,
     exercises (
       category
     ),
@@ -152,6 +158,7 @@ const workoutSelect = `
     notes,
     workout_sets (
       id,
+      program_set_id,
       sort_order,
       set_type,
       duration_seconds,
@@ -197,11 +204,13 @@ function mapWorkout(raw: RawWorkout): Workout {
         exercise_name_snapshot: exercise.exercise_name_snapshot,
         id: exercise.id,
         notes: exercise.notes,
+        program_exercise_id: exercise.program_exercise_id,
         sets: sortByOrder(exercise.workout_sets ?? []).map((set) => ({
           ...set,
           distance_km: set.distance_km === null ? null : Number(set.distance_km),
           previous_reps: null,
           previous_weight_kg: null,
+          program_set_id: set.program_set_id,
           rir: set.rir === null ? null : Number(set.rir),
           rpe: set.rpe === null ? null : Number(set.rpe),
           target_distance_km: null,
@@ -247,6 +256,7 @@ async function getProgramTargets(
         exercise_id,
         sort_order,
         program_sets (
+          id,
           sort_order,
           target_duration_seconds,
           target_distance_km,
@@ -277,7 +287,7 @@ async function getProgramTargets(
 
   for (const exercise of (data ?? []) as RawProgramExerciseTarget[]) {
     for (const set of exercise.program_sets ?? []) {
-      targets.set(setContextKey(exercise.sort_order, set.sort_order), {
+      const target = {
         target_distance_km:
           set.target_distance_km === null ? null : Number(set.target_distance_km),
         target_duration_seconds: set.target_duration_seconds,
@@ -286,7 +296,10 @@ async function getProgramTargets(
         target_reps_min: set.target_reps_min,
         target_weight_kg:
           set.target_weight_kg === null ? null : Number(set.target_weight_kg)
-      });
+      };
+
+      targets.set(setContextKey(exercise.sort_order, set.sort_order), target);
+      targets.set(`set:${set.id}`, target);
     }
   }
 
@@ -396,9 +409,10 @@ async function hydrateActiveWorkoutContext(
     workoutExercises: workout.workoutExercises.map((exercise) => ({
       ...exercise,
       sets: exercise.sets.map((set) => {
-        const target = targets.get(
-          setContextKey(exercise.sort_order, set.sort_order)
-        );
+        const target = set.program_set_id
+          ? targets.get(`set:${set.program_set_id}`) ??
+            targets.get(setContextKey(exercise.sort_order, set.sort_order))
+          : targets.get(setContextKey(exercise.sort_order, set.sort_order));
         const previous = previousSets
           .get(exercise.exercise_id)
           ?.get(set.sort_order);

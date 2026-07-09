@@ -37,8 +37,12 @@ function formatKg(value: number | null) {
   }
 
   return `${Number(value).toLocaleString(undefined, {
-    maximumFractionDigits: 1
+    maximumFractionDigits: 2
   })}kg`;
+}
+
+function formatProgressionStyle(value: string) {
+  return value.replaceAll("_", " ");
 }
 
 function formatReps(min: number | null, max: number | null) {
@@ -250,6 +254,10 @@ export default async function ProgramDetailPage({
                         {exercise.sets.length} set
                         {exercise.sets.length === 1 ? "" : "s"}
                         {exercise.notes ? ` - ${exercise.notes}` : ""}
+                      </p>
+                      <p className="mt-1 text-xs font-semibold capitalize text-[color:var(--accent)]">
+                        {formatProgressionStyle(exercise.progression_style)}
+                        {exercise.track_as_main_lift ? " · main lift" : ""}
                       </p>
                       <div className="mt-2 grid gap-1">
                         {groupedSetSummaries(

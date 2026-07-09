@@ -14,6 +14,7 @@ import {
   removeProgram,
   updateProgramBasics,
   updateProgramDay,
+  updateProgramExerciseSettings,
   updateProgramSet
 } from "@/app/(app)/programs/actions";
 import { getExerciseOptions } from "@/lib/workouts/queries";
@@ -176,8 +177,12 @@ function formatKg(value: number | null) {
   }
 
   return `${Number(value).toLocaleString(undefined, {
-    maximumFractionDigits: 1
+    maximumFractionDigits: 2
   })}kg`;
+}
+
+function formatProgressionStyle(value: string) {
+  return value.replaceAll("_", " ");
 }
 
 function formatReps(min: number | null, max: number | null) {
@@ -288,6 +293,11 @@ function ExerciseCard({
           <h4 className="truncate text-base font-black">
             {exercise.sort_order}. {exercise.exercise_name}
           </h4>
+          <p className="mt-1 text-xs font-black capitalize text-[color:var(--accent)]">
+            {formatProgressionStyle(exercise.progression_style)} · +
+            {formatKg(exercise.weight_increment_kg)}
+            {exercise.track_as_main_lift ? " · main lift" : ""}
+          </p>
           <div className="mt-2 grid gap-1 text-sm text-[color:var(--muted)]">
             {setSummaries.length === 0 ? (
               <p>No sets</p>
@@ -332,6 +342,57 @@ function ExerciseCard({
           <span className="text-xs text-[color:var(--muted)]">sets</span>
         </summary>
         <div className="space-y-3 p-3 pt-0">
+          <form action={updateProgramExerciseSettings} className="grid gap-2 rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+            <input type="hidden" name="programId" value={programId} />
+            <input
+              type="hidden"
+              name="programExerciseId"
+              value={exercise.id}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <label className="grid gap-1">
+                <span className="text-[11px] font-black text-[color:var(--muted)]">
+                  style
+                </span>
+                <select
+                  name="progressionStyle"
+                  defaultValue={exercise.progression_style}
+                  className="field-base min-h-11 px-2 text-sm font-black"
+                >
+                  <option value="double_progression">Double progression</option>
+                  <option value="top_set_backoff">Top set + back-off</option>
+                  <option value="fixed">Fixed</option>
+                </select>
+              </label>
+              <label className="grid gap-1">
+                <span className="text-[11px] font-black text-[color:var(--muted)]">
+                  increase
+                </span>
+                <input
+                  name="weightIncrementKg"
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.25"
+                  defaultValue={exercise.weight_increment_kg}
+                  className="field-base min-h-11 px-2 text-center text-sm font-black"
+                />
+              </label>
+            </div>
+            <label className="flex min-h-11 items-center gap-2 text-xs font-black text-[color:var(--muted)]">
+              <input
+                name="trackAsMainLift"
+                type="checkbox"
+                defaultChecked={exercise.track_as_main_lift}
+                className="size-4 accent-[color:var(--accent)]"
+              />
+              Track as main lift
+            </label>
+            <FormSubmitButton pendingLabel="Saving...">
+              <Save aria-hidden="true" className="size-4" />
+              Save lift settings
+            </FormSubmitButton>
+          </form>
           {exercise.sets.map((set) => (
             <SetEditor
               key={set.id}
@@ -449,6 +510,10 @@ function DayEditor({
           exerciseOptions={exerciseOptions}
           programDayId={day.id}
           programId={programId}
+          recommendMainLift={
+            day.exercises.filter((exercise) => exercise.track_as_main_lift)
+              .length < 2
+          }
         />
 
         <div className="space-y-3">

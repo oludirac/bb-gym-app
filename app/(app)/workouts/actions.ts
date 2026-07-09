@@ -5,8 +5,6 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { getProgramDetail } from "@/lib/programs/queries";
 
-const doubleProgressionStepKg = 2.5;
-
 function fieldValue(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
@@ -146,10 +144,12 @@ async function advanceProgramEnrollment(
 }
 
 type WorkoutExerciseForProgression = {
+  program_exercise_id: string | null;
   sort_order: number;
   workout_sets:
     | {
         completed_at: string | null;
+        program_set_id: string | null;
         reps: number | null;
         sort_order: number;
         weight_kg: number | null;
@@ -167,11 +167,14 @@ async function applyDoubleProgression(
     .select(
       `
         id,
+        progression_style,
         sort_order,
+        weight_increment_kg,
         program_sets (
           id,
           set_type,
           sort_order,
+          target_reps_min,
           target_reps_max,
           target_weight_kg
         )
@@ -179,53 +182,217 @@ async function applyDoubleProgression(
     )
     .eq("program_day_id", programDayId);
 
-  const workoutExerciseByOrder = new Map(
-    workoutExercises.map((exercise) => [exercise.sort_order, exercise])
+  const workoutExerciseByProgramId = new Map(
+    workoutExercises
+      .filter((exercise) => exercise.program_exercise_id)
+      .map((exercise) => [exercise.program_exercise_id, exercise])
   );
   const updates: PromiseLike<unknown>[] = [];
 
   for (const programExercise of programExercises ?? []) {
-    const workoutExercise = workoutExerciseByOrder.get(programExercise.sort_order);
+    const workoutExercise = workoutExerciseByProgramId.get(programExercise.id);
 
-    if (!workoutExercise) {
+    if (!workoutExercise || programExercise.progression_style === "fixed") {
       continue;
     }
 
-    const workoutSetByOrder = new Map(
-      (workoutExercise.workout_sets ?? []).map((set) => [set.sort_order, set])
+    const workoutSetByProgramId = new Map(
+      (workoutExercise.workout_sets ?? [])
+        .filter((set) => set.program_set_id)
+        .map((set) => [set.program_set_id, set])
     );
+    const programSets = [...(programExercise.program_sets ?? [])].sort(
+      (a, b) => a.sort_order - b.sort_order
+    );
+    let index = 0;
 
-    for (const programSet of programExercise.program_sets ?? []) {
-      const workoutSet = workoutSetByOrder.get(programSet.sort_order);
+    while (index < programSets.length) {
+      const first = programSets[index];
+      let lastIndex = index;
       const targetWeight =
-        programSet.target_weight_kg === null
+        first.target_weight_kg === null
           ? null
-          : Number(programSet.target_weight_kg);
+          : Number(first.target_weight_kg);
+
+      while (
+        lastIndex + 1 < programSets.length &&
+        programSets[lastIndex + 1].target_weight_kg === first.target_weight_kg &&
+        programSets[lastIndex + 1].target_reps_min === first.target_reps_min &&
+        programSets[lastIndex + 1].target_reps_max === first.target_reps_max
+      ) {
+        lastIndex += 1;
+      }
+
+      const group = programSets.slice(index, lastIndex + 1);
 
       if (
-        programSet.set_type !== "working" ||
         targetWeight === null ||
-        programSet.target_reps_max === null ||
-        !workoutSet?.completed_at ||
-        workoutSet.reps === null ||
-        workoutSet.reps < programSet.target_reps_max
+        first.target_reps_max === null ||
+        group.some((set) => set.set_type !== "working")
       ) {
+        index = lastIndex + 1;
         continue;
       }
 
-      updates.push(
-        supabase
-          .from("program_sets")
-          .update({
-            target_weight_kg: targetWeight + doubleProgressionStepKg
-          })
-          .eq("id", programSet.id)
-          .then(() => undefined)
-      );
+      const groupCompleted = group.every((programSet) => {
+        const workoutSet = workoutSetByProgramId.get(programSet.id);
+        return (
+          Boolean(workoutSet?.completed_at) &&
+          workoutSet?.reps !== null &&
+          workoutSet?.reps !== undefined &&
+          workoutSet.reps >= Number(programSet.target_reps_max)
+        );
+      });
+
+      if (groupCompleted) {
+        updates.push(
+          supabase
+            .from("program_sets")
+            .update({
+              target_weight_kg:
+                targetWeight + Number(programExercise.weight_increment_kg ?? 2.5)
+            })
+            .in(
+              "id",
+              group.map((set) => set.id)
+            )
+            .then(() => undefined)
+        );
+      }
+
+      index = lastIndex + 1;
     }
   }
 
   await Promise.all(updates);
+}
+
+async function normalizeWorkoutExerciseSortOrders(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  workoutId: string
+) {
+  const { data } = await supabase
+    .from("workout_exercises")
+    .select("id")
+    .eq("workout_id", workoutId)
+    .order("sort_order", { ascending: true });
+
+  await Promise.all(
+    (data ?? []).map((exercise, index) =>
+      supabase
+        .from("workout_exercises")
+        .update({ sort_order: index + 1 })
+        .eq("id", exercise.id)
+    )
+  );
+}
+
+async function moveWorkoutExerciseById(
+  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  workoutExerciseId: string,
+  direction: "down" | "later" | "up"
+) {
+  const { data: current } = await supabase
+    .from("workout_exercises")
+    .select("id, workout_id, sort_order")
+    .eq("id", workoutExerciseId)
+    .maybeSingle();
+
+  if (!current) {
+    return;
+  }
+
+  const { data } = await supabase
+    .from("workout_exercises")
+    .select("id, sort_order")
+    .eq("workout_id", current.workout_id)
+    .order("sort_order", { ascending: true });
+  const exercises = data ?? [];
+
+  if (direction === "later") {
+    const maxOrder = Math.max(...exercises.map((exercise) => exercise.sort_order));
+
+    if (current.sort_order === maxOrder) {
+      return;
+    }
+
+    await supabase
+      .from("workout_exercises")
+      .update({ sort_order: maxOrder + 1000 })
+      .eq("id", current.id);
+  } else {
+    const currentIndex = exercises.findIndex(
+      (exercise) => exercise.id === current.id
+    );
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const target = exercises[targetIndex];
+
+    if (!target) {
+      return;
+    }
+
+    const temporarySortOrder =
+      Math.max(...exercises.map((exercise) => exercise.sort_order)) + 1000;
+
+    await supabase
+      .from("workout_exercises")
+      .update({ sort_order: temporarySortOrder })
+      .eq("id", current.id);
+
+    await supabase
+      .from("workout_exercises")
+      .update({ sort_order: current.sort_order })
+      .eq("id", target.id);
+
+    await supabase
+      .from("workout_exercises")
+      .update({ sort_order: target.sort_order })
+      .eq("id", current.id);
+  }
+
+  await normalizeWorkoutExerciseSortOrders(supabase, current.workout_id);
+}
+
+export async function moveWorkoutExerciseInline(input: {
+  direction: "down" | "later" | "up";
+  workoutExerciseId: string;
+}) {
+  const { supabase } = await requireUser();
+
+  if (!["down", "later", "up"].includes(input.direction)) {
+    return { ok: false };
+  }
+
+  await moveWorkoutExerciseById(
+    supabase,
+    input.workoutExerciseId,
+    input.direction
+  );
+
+  revalidatePath("/workouts/active");
+  return { ok: true };
+}
+
+export async function saveWorkoutSetWeightAsPlanWeight(input: {
+  programSetId: string | null;
+  weightKg: number | string | null;
+}) {
+  const { supabase } = await requireUser();
+  const weightKg = optionalNumberFromValue(input.weightKg);
+
+  if (!input.programSetId || weightKg === null) {
+    return { ok: false };
+  }
+
+  await supabase
+    .from("program_sets")
+    .update({ target_weight_kg: weightKg })
+    .eq("id", input.programSetId);
+
+  revalidatePath("/workouts/active");
+  revalidatePath("/programs");
+  revalidatePath("/programs/active");
+  return { ok: true };
 }
 
 export async function startBlankWorkout() {
@@ -462,7 +629,9 @@ export async function finishWorkout(formData: FormData) {
 
   const { data: exercises } = await supabase
     .from("workout_exercises")
-    .select("id, sort_order, workout_sets(sort_order, weight_kg, reps, completed_at)")
+    .select(
+      "id, program_exercise_id, sort_order, workout_sets(program_set_id, sort_order, weight_kg, reps, completed_at)"
+    )
     .eq("workout_id", workoutId);
 
   const totalVolumeKg = (exercises ?? []).reduce((total, exercise) => {

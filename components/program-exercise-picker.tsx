@@ -14,13 +14,17 @@ type ProgramExercisePickerProps = {
   programDayId: string;
   programId: string;
   action: (formData: FormData) => void | Promise<void>;
+  recommendMainLift: boolean;
 };
+
+const repRanges = ["4-6", "8-10", "10-12", "12-15", "custom"];
 
 export function ProgramExercisePicker({
   action,
   exerciseOptions,
   programDayId,
-  programId
+  programId,
+  recommendMainLift
 }: ProgramExercisePickerProps) {
   const categories = useMemo(
     () =>
@@ -30,6 +34,11 @@ export function ProgramExercisePicker({
     [exerciseOptions]
   );
   const [category, setCategory] = useState<string>(categories[0] ?? "chest");
+  const [progressionStyle, setProgressionStyle] =
+    useState("double_progression");
+  const [repRange, setRepRange] = useState("8-10");
+  const [topRepRange, setTopRepRange] = useState("4-6");
+  const [backoffRepRange, setBackoffRepRange] = useState("8-10");
   const isCardio = category === "cardio";
   const filteredExercises = exerciseOptions.filter(
     (exercise) => exercise.category === category
@@ -70,8 +79,48 @@ export function ProgramExercisePicker({
           ))}
         </select>
       </label>
-      <div className="grid grid-cols-4 gap-2">
-        <label className="grid gap-1">
+      {!isCardio ? (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="grid gap-1">
+            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+              Style
+            </span>
+            <select
+              name="progressionStyle"
+              value={progressionStyle}
+              onChange={(event) => setProgressionStyle(event.target.value)}
+              className="field-base min-h-11 px-2 text-sm font-black"
+            >
+              <option value="double_progression">Double progression</option>
+              <option value="top_set_backoff">Top set + back-off</option>
+              <option value="fixed">Fixed</option>
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+              Increase
+            </span>
+            <select
+              name="weightIncrementKg"
+              defaultValue="2.5"
+              className="field-base min-h-11 px-2 text-center text-sm font-black"
+            >
+              <option value="1.25">1.25kg</option>
+              <option value="2.5">2.5kg</option>
+              <option value="5">5kg</option>
+            </select>
+          </label>
+        </div>
+      ) : null}
+
+      <div className={isCardio ? "grid grid-cols-4 gap-2" : "grid gap-3"}>
+        <label
+          className={
+            progressionStyle === "top_set_backoff" && !isCardio
+              ? "hidden"
+              : "grid gap-1"
+          }
+        >
           <span className="text-xs font-black uppercase text-[color:var(--muted)]">
             sets
           </span>
@@ -129,48 +178,169 @@ export function ProgramExercisePicker({
             </label>
           </>
         ) : (
-          <>
-            <label className="grid gap-1">
-              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-                min
-              </span>
-              <input
-                name="targetRepsMin"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                defaultValue="8"
-                className="field-base min-h-11 px-2 text-center text-sm font-black"
-              />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-                max
-              </span>
-              <input
-                name="targetRepsMax"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                defaultValue="12"
-                className="field-base min-h-11 px-2 text-center text-sm font-black"
-              />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-                kg
-              </span>
-              <input
-                name="targetWeightKg"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.25"
-                placeholder="0"
-                className="field-base min-h-11 px-2 text-center text-sm font-black"
-              />
-            </label>
-          </>
+          <div className="grid gap-2">
+            {progressionStyle === "top_set_backoff" ? (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="grid gap-1">
+                    <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                      Top reps
+                    </span>
+                    <select
+                      name="topRepRange"
+                      value={topRepRange}
+                      onChange={(event) => setTopRepRange(event.target.value)}
+                      className="field-base min-h-11 px-2 text-center text-sm font-black"
+                    >
+                      {repRanges.slice(0, 4).map((range) => (
+                        <option key={range} value={range}>
+                          {range}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                      Top kg
+                    </span>
+                    <input
+                      name="topWeightKg"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.25"
+                      placeholder="0"
+                      className="field-base min-h-11 px-2 text-center text-sm font-black"
+                    />
+                  </label>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="grid gap-1">
+                    <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                      Back-offs
+                    </span>
+                    <select
+                      name="backoffSetCount"
+                      defaultValue="2"
+                      className="field-base min-h-11 px-2 text-center text-sm font-black"
+                    >
+                      {[1, 2, 3, 4].map((count) => (
+                        <option key={count} value={count}>
+                          {count}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                      Reps
+                    </span>
+                    <select
+                      name="backoffRepRange"
+                      value={backoffRepRange}
+                      onChange={(event) =>
+                        setBackoffRepRange(event.target.value)
+                      }
+                      className="field-base min-h-11 px-2 text-center text-sm font-black"
+                    >
+                      {repRanges.slice(1, 4).map((range) => (
+                        <option key={range} value={range}>
+                          {range}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                      Kg
+                    </span>
+                    <input
+                      name="backoffWeightKg"
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="0.25"
+                      placeholder="0"
+                      className="field-base min-h-11 px-2 text-center text-sm font-black"
+                    />
+                  </label>
+                </div>
+                <label className="flex min-h-11 items-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 text-xs font-black text-[color:var(--muted)]">
+                  <input
+                    name="trackAsMainLift"
+                    type="checkbox"
+                    defaultChecked={recommendMainLift}
+                    className="size-4 accent-[color:var(--accent)]"
+                  />
+                  Track as main lift
+                </label>
+              </>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <label className="grid gap-1">
+                  <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                    reps
+                  </span>
+                  <select
+                    name="repRange"
+                    value={repRange}
+                    onChange={(event) => setRepRange(event.target.value)}
+                    className="field-base min-h-11 px-2 text-center text-sm font-black"
+                  >
+                    {repRanges.map((range) => (
+                      <option key={range} value={range}>
+                        {range === "custom" ? "Custom" : range}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                    kg
+                  </span>
+                  <input
+                    name="targetWeightKg"
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.25"
+                    placeholder="0"
+                    className="field-base min-h-11 px-2 text-center text-sm font-black"
+                  />
+                </label>
+                <label className="flex min-h-11 items-end gap-2 pb-1 text-xs font-black text-[color:var(--muted)]">
+                  <input
+                    name="trackAsMainLift"
+                    type="checkbox"
+                    defaultChecked={recommendMainLift}
+                    className="size-4 accent-[color:var(--accent)]"
+                  />
+                  Main
+                </label>
+              </div>
+            )}
+
+            {repRange === "custom" && progressionStyle !== "top_set_backoff" ? (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  name="targetRepsMin"
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  placeholder="Min reps"
+                  className="field-base min-h-11 px-2 text-center text-sm font-black"
+                />
+                <input
+                  name="targetRepsMax"
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  placeholder="Max reps"
+                  className="field-base min-h-11 px-2 text-center text-sm font-black"
+                />
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
       <FormSubmitButton pendingLabel="Adding...">

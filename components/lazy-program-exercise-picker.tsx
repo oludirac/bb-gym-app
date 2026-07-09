@@ -10,13 +10,15 @@ type LazyProgramExercisePickerProps = {
   exerciseOptions: ExerciseOption[];
   programDayId: string;
   programId: string;
+  recommendMainLift: boolean;
 };
 
 export function LazyProgramExercisePicker({
   action,
   exerciseOptions,
   programDayId,
-  programId
+  programId,
+  recommendMainLift
 }: LazyProgramExercisePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -50,6 +52,7 @@ export function LazyProgramExercisePicker({
         exerciseOptions={exerciseOptions}
         programDayId={programDayId}
         programId={programId}
+        recommendMainLift={recommendMainLift}
       />
     </section>
   );

@@ -5,11 +5,17 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import {
   getProgramDetail,
+  type ProgramProgressionStyle,
   type ProgramScheduleType
 } from "@/lib/programs/queries";
 
 const setTypes = new Set(["warmup", "working", "drop", "failure"]);
 const scheduleTypes = new Set<ProgramScheduleType>(["calendar", "sequence"]);
+const progressionStyles = new Set<ProgramProgressionStyle>([
+  "double_progression",
+  "fixed",
+  "top_set_backoff"
+]);
 type MoveDirection = "up" | "down";
 
 function fieldValue(formData: FormData, key: string) {
@@ -52,6 +58,22 @@ function parseScheduleType(value: string): ProgramScheduleType {
 
 function parseSetType(value: string) {
   return setTypes.has(value) ? value : "working";
+}
+
+function parseProgressionStyle(value: string): ProgramProgressionStyle {
+  return progressionStyles.has(value as ProgramProgressionStyle)
+    ? (value as ProgramProgressionStyle)
+    : "double_progression";
+}
+
+function parseRepRange(value: string, fallbackMin = 8, fallbackMax = 12) {
+  const [min, max] = value.split("-").map((part) => Number(part));
+
+  if (Number.isFinite(min) && Number.isFinite(max) && min <= max) {
+    return { max, min };
+  }
+
+  return { max: fallbackMax, min: fallbackMin };
 }
 
 function isMoveDirection(value: string): value is MoveDirection {
@@ -528,14 +550,36 @@ export async function addProgramExercise(formData: FormData) {
   const programId = fieldValue(formData, "programId");
   const programDayId = fieldValue(formData, "programDayId");
   const exerciseId = fieldValue(formData, "exerciseId");
+  const progressionStyle = parseProgressionStyle(
+    fieldValue(formData, "progressionStyle")
+  );
+  const repRange = parseRepRange(fieldValue(formData, "repRange"));
+  const topRepRange = parseRepRange(fieldValue(formData, "topRepRange"), 4, 6);
+  const backoffRepRange = parseRepRange(
+    fieldValue(formData, "backoffRepRange"),
+    8,
+    10
+  );
   const setCount = Math.min(
     10,
     Math.max(1, fieldNumber(formData, "setCount") ?? 3)
   );
-  const repsMin = optionalNumber(fieldValue(formData, "targetRepsMin")) ?? 8;
+  const backoffSetCount = Math.min(
+    9,
+    Math.max(1, fieldNumber(formData, "backoffSetCount") ?? 2)
+  );
+  const repsMin =
+    optionalNumber(fieldValue(formData, "targetRepsMin")) ?? repRange.min;
   const repsMax =
-    optionalNumber(fieldValue(formData, "targetRepsMax")) ?? repsMin;
+    optionalNumber(fieldValue(formData, "targetRepsMax")) ?? repRange.max;
   const targetWeightKg = optionalNumber(fieldValue(formData, "targetWeightKg"));
+  const topWeightKg =
+    optionalNumber(fieldValue(formData, "topWeightKg")) ?? targetWeightKg;
+  const backoffWeightKg =
+    optionalNumber(fieldValue(formData, "backoffWeightKg")) ?? targetWeightKg;
+  const weightIncrementKg =
+    optionalNumber(fieldValue(formData, "weightIncrementKg")) ?? 2.5;
+  const trackAsMainLift = fieldValue(formData, "trackAsMainLift") === "on";
   const targetDurationSeconds = optionalSecondsFromMinutes(
     fieldValue(formData, "targetDurationMinutes")
   );
@@ -566,25 +610,61 @@ export async function addProgramExercise(formData: FormData) {
     .insert({
       exercise_id: exerciseId,
       program_day_id: programDayId,
-      sort_order: sortOrder
+      progression_style: isCardio ? "fixed" : progressionStyle,
+      sort_order: sortOrder,
+      track_as_main_lift: !isCardio && trackAsMainLift,
+      weight_increment_kg: isCardio ? 0 : weightIncrementKg
     })
     .select("id")
     .single();
 
   if (programExercise?.id) {
-    await supabase.from("program_sets").insert(
-      Array.from({ length: setCount }, (_, index) => ({
-        program_exercise_id: programExercise.id,
-        set_type: "working",
-        sort_order: index + 1,
-        target_distance_km: isCardio ? targetDistanceKm : null,
-        target_duration_seconds: isCardio ? targetDurationSeconds : null,
-        target_intensity: isCardio ? targetIntensity : null,
-        target_reps_min: isCardio ? null : repsMin,
-        target_reps_max: isCardio ? null : repsMax,
-        target_weight_kg: isCardio ? null : targetWeightKg
-      }))
-    );
+    const weightedSets =
+      progressionStyle === "top_set_backoff" && !isCardio
+        ? [
+            {
+              program_exercise_id: programExercise.id,
+              set_type: "working",
+              sort_order: 1,
+              target_reps_min: topRepRange.min,
+              target_reps_max: topRepRange.max,
+              target_weight_kg: topWeightKg
+            },
+            ...Array.from({ length: backoffSetCount }, (_, index) => ({
+              program_exercise_id: programExercise.id,
+              set_type: "working",
+              sort_order: index + 2,
+              target_reps_min: backoffRepRange.min,
+              target_reps_max: backoffRepRange.max,
+              target_weight_kg: backoffWeightKg
+            }))
+          ]
+        : Array.from({ length: setCount }, (_, index) => ({
+            program_exercise_id: programExercise.id,
+            set_type: "working",
+            sort_order: index + 1,
+            target_reps_min: repsMin,
+            target_reps_max: repsMax,
+            target_weight_kg: targetWeightKg
+          }));
+
+    if (isCardio) {
+      await supabase.from("program_sets").insert(
+        Array.from({ length: setCount }, (_, index) => ({
+            program_exercise_id: programExercise.id,
+            set_type: "working",
+            sort_order: index + 1,
+            target_distance_km: targetDistanceKm,
+            target_duration_seconds: targetDurationSeconds,
+            target_intensity: targetIntensity,
+            target_reps_min: null,
+            target_reps_max: null,
+            target_weight_kg: null
+          }))
+      );
+    } else {
+      await supabase.from("program_sets").insert(weightedSets);
+    }
   }
 
   await normalizeProgramExerciseSortOrders(supabase, programDayId);
@@ -620,6 +700,32 @@ export async function deleteProgramExercise(formData: FormData) {
 
   revalidatePath(`/programs/${programId}/edit`);
   redirect(programId ? `/programs/${programId}/edit` : "/programs");
+}
+
+export async function updateProgramExerciseSettings(formData: FormData) {
+  const { supabase } = await requireUser();
+  const programId = fieldValue(formData, "programId");
+  const programExerciseId = fieldValue(formData, "programExerciseId");
+
+  if (!programId || !programExerciseId) {
+    redirect(programId ? `/programs/${programId}/edit` : "/programs");
+  }
+
+  await supabase
+    .from("program_exercises")
+    .update({
+      progression_style: parseProgressionStyle(
+        fieldValue(formData, "progressionStyle")
+      ),
+      track_as_main_lift: fieldValue(formData, "trackAsMainLift") === "on",
+      weight_increment_kg:
+        optionalNumber(fieldValue(formData, "weightIncrementKg")) ?? 2.5
+    })
+    .eq("id", programExerciseId);
+
+  revalidatePath(`/programs/${programId}/edit`);
+  revalidatePath(`/programs/${programId}`);
+  redirect(`/programs/${programId}/edit`);
 }
 
 export async function moveProgramExercise(formData: FormData) {
@@ -883,7 +989,10 @@ export async function copyProgram(formData: FormData) {
             exercise_id: exercise.exercise_id,
             notes: exercise.notes,
             program_day_id: copiedDay.id,
-            sort_order: exercise.sort_order
+            progression_style: exercise.progression_style,
+            sort_order: exercise.sort_order,
+            track_as_main_lift: exercise.track_as_main_lift,
+            weight_increment_kg: exercise.weight_increment_kg
           })
           .select("id")
           .single();
@@ -1165,6 +1274,7 @@ export async function startWorkoutFromProgramDay(formData: FormData) {
         exercise_id: exercise.exercise_id,
         exercise_name_snapshot: exercise.exercise_name,
         notes: exercise.notes,
+        program_exercise_id: exercise.id,
         sort_order: exercise.sort_order,
         workout_id: workout.id
       })
@@ -1181,6 +1291,7 @@ export async function startWorkoutFromProgramDay(formData: FormData) {
         distance_km: set.target_distance_km,
         duration_seconds: set.target_duration_seconds,
         intensity: set.target_intensity,
+        program_set_id: set.id,
         reps: set.target_reps_min ?? set.target_reps_max,
         rest_seconds: set.rest_seconds,
         rir: set.target_rir,

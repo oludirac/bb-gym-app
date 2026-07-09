@@ -1,81 +1,112 @@
 import Link from "next/link";
-import { Activity, BarChart3, Trophy } from "lucide-react";
-import { getProgressSummary } from "@/lib/progress/queries";
+import { BarChart3, Dumbbell, Scale, Trophy } from "lucide-react";
+import {
+  getProgressSummary,
+  type MainLiftProgress
+} from "@/lib/progress/queries";
 import { requireUser } from "@/lib/auth/session";
 import { formatWeight } from "@/lib/unit-conversion";
 
-function formatNumber(value: number) {
-  return value.toLocaleString(undefined, {
-    maximumFractionDigits: 1
-  });
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short"
+  }).format(new Date(value));
 }
 
-function MetricCard({
-  label,
-  volume,
-  workouts,
-  unit
-}: {
-  label: string;
-  unit: "kg" | "lb";
-  volume: number;
-  workouts: number;
-}) {
+function formatSignedKg(value: number | null, unit: "kg" | "lb") {
+  if (value === null) {
+    return "No baseline";
+  }
+
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatWeight(value, unit)}`;
+}
+
+function MiniTrend({ lift }: { lift: MainLiftProgress }) {
+  const values = lift.trend
+    .map((point) => point.value)
+    .filter((value): value is number => value !== null);
+  const min = values.length > 0 ? Math.min(...values) : 0;
+  const max = values.length > 0 ? Math.max(...values) : 1;
+  const range = Math.max(1, max - min);
+
   return (
-    <div className="app-card-flat p-4">
-      <p className="text-xs font-black uppercase text-[color:var(--muted)]">
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-black">{workouts}</p>
-      <p className="mt-1 text-sm text-[color:var(--muted)]">
-        {formatWeight(volume, unit)}
-      </p>
+    <div className="mt-4 flex h-20 items-end gap-1">
+      {lift.trend.map((point) => {
+        const height =
+          point.value === null ? 4 : Math.max(12, ((point.value - min) / range) * 64 + 12);
+
+        return (
+          <div key={point.week} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <div className="flex h-16 w-full items-end rounded-lg bg-[#0d1117] p-1">
+              <div
+                className={`w-full rounded-md ${
+                  point.value === null
+                    ? "bg-[color:var(--panel-border)]"
+                    : "bg-[color:var(--accent)]"
+                }`}
+                style={{ height }}
+              />
+            </div>
+            <p className="text-[9px] font-black text-[color:var(--muted)]">
+              {point.label}
+            </p>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function ActivityGraph({
-  activity
+function MainLiftCard({
+  lift,
+  unit
 }: {
-  activity: { label: string; volume_kg: number; workouts: number }[];
+  lift: MainLiftProgress;
+  unit: "kg" | "lb";
 }) {
-  const maxWorkouts = Math.max(1, ...activity.map((item) => item.workouts));
-
   return (
-    <section className="app-card p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-black">Last 8 weeks</h2>
+    <article className="app-card-flat p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-black">{lift.exercise_name}</h2>
           <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Completed workouts.
+            {lift.rep_range} reps
           </p>
         </div>
-        <BarChart3 aria-hidden="true" className="size-5 text-[color:var(--accent)]" />
+        <div className="rounded-xl bg-[color:var(--accent)] px-3 py-2 text-sm font-black text-zinc-950">
+          {lift.current_weight_kg === null
+            ? "-"
+            : formatWeight(lift.current_weight_kg, unit)}
+        </div>
       </div>
 
-      <div className="mt-5 flex h-36 items-end gap-2">
-        {activity.map((item) => {
-          const height = item.workouts
-            ? Math.max(12, (item.workouts / maxWorkouts) * 100)
-            : 4;
-
-          return (
-            <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <div className="flex h-24 w-full items-end rounded-xl bg-[#0d1117] p-1">
-                <div
-                  className="w-full rounded-lg bg-[color:var(--accent)]"
-                  style={{ height: `${height}%` }}
-                />
-              </div>
-              <p className="max-w-full truncate text-[10px] font-bold text-[color:var(--muted)]">
-                {item.label}
-              </p>
-              <p className="text-xs font-black">{item.workouts}</p>
-            </div>
-          );
-        })}
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+          <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+            Last
+          </p>
+          <p className="mt-1 text-sm font-black">
+            {lift.last_result
+              ? `${formatWeight(lift.last_result.weight_kg, unit)} x ${
+                  lift.last_result.reps
+                }`
+              : "No sets"}
+          </p>
+        </div>
+        <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+          <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+            Since W1
+          </p>
+          <p className="mt-1 text-sm font-black">
+            {formatSignedKg(lift.change_kg, unit)}
+          </p>
+        </div>
       </div>
-    </section>
+
+      <MiniTrend lift={lift} />
+    </article>
   );
 }
 
@@ -83,112 +114,157 @@ export default async function ProgressPage() {
   const { profile, supabase } = await requireUser();
   const unit = profile?.unit_preference ?? "kg";
   const summary = await getProgressSummary(supabase);
+  const latestWeight = summary.bodyweight.at(-1);
 
   return (
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-bold text-[color:var(--accent)]">Progress</p>
-        <h1 className="text-3xl font-black tracking-normal">Training log</h1>
-        <p className="text-sm leading-6 text-[color:var(--muted)]">
-          Workouts, volume, and best lifts from finished sessions.
-        </p>
+        <h1 className="text-3xl font-black tracking-normal">12-week block</h1>
       </header>
 
-      <section className="grid grid-cols-2 gap-3">
-        <MetricCard
-          label="This week"
-          unit={unit}
-          volume={summary.periods.week.volume_kg}
-          workouts={summary.periods.week.workouts}
-        />
-        <MetricCard
-          label="This month"
-          unit={unit}
-          volume={summary.periods.month.volume_kg}
-          workouts={summary.periods.month.workouts}
-        />
-        <MetricCard
-          label="This year"
-          unit={unit}
-          volume={summary.periods.year.volume_kg}
-          workouts={summary.periods.year.workouts}
-        />
-        <MetricCard
-          label="All time"
-          unit={unit}
-          volume={summary.periods.all.volume_kg}
-          workouts={summary.periods.all.workouts}
-        />
-      </section>
+      {summary.active_block ? (
+        <section className="app-card p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
+                Week {summary.active_block.week_number}/
+                {summary.active_block.block_length_weeks}
+              </p>
+              <h2 className="mt-4 text-2xl font-black">
+                {summary.active_block.program_name}
+              </h2>
+              <p className="mt-2 text-sm text-[color:var(--muted)]">
+                Started {formatDate(summary.active_block.started_on)}
+              </p>
+            </div>
+            <Dumbbell
+              aria-hidden="true"
+              className="size-8 shrink-0 text-[color:var(--accent)]"
+            />
+          </div>
 
-      <ActivityGraph activity={summary.weekly_activity} />
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+              <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+                This week
+              </p>
+              <p className="mt-1 text-3xl font-black">
+                {summary.active_block.workouts_completed_this_week}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+              <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+                This block
+              </p>
+              <p className="mt-1 text-3xl font-black">
+                {summary.active_block.workouts_completed_block}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="app-card p-5">
+          <h2 className="text-xl font-black">No active plan</h2>
+          <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
+            Choose a plan to track main lifts over a 12-week block.
+          </p>
+          <Link
+            href="/programs"
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950"
+          >
+            Open plans
+          </Link>
+        </section>
+      )}
 
       <section className="space-y-3">
-        <h2 className="text-base font-semibold">Best lifts</h2>
-        {summary.best_lifts.length === 0 ? (
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-black">Main lifts</h2>
+          <Trophy aria-hidden="true" className="size-5 text-[color:var(--accent)]" />
+        </div>
+        {summary.main_lifts.length === 0 ? (
           <div className="app-card-flat p-4">
-            <h3 className="text-base font-semibold">No lifting data yet</h3>
-            <p className="mt-1 text-sm text-[color:var(--muted)]">
-              Log weight and reps in a finished workout.
+            <p className="text-sm text-[color:var(--muted)]">
+              Mark lifts as main lifts in your plan to track them here.
             </p>
           </div>
         ) : (
           <div className="grid gap-3">
-            {summary.best_lifts.map((lift) => (
-              <article
-                key={lift.exercise_id}
-                className="app-card-flat p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
-                    <Trophy aria-hidden="true" className="size-5" />
-                  </div>
-                  <h3 className="text-base font-black">{lift.exercise_name}</h3>
-                </div>
-                <p className="mt-1 text-sm text-[color:var(--muted)]">
-                  Est. 1RM {formatWeight(lift.estimated_one_rep_max, unit)}
-                </p>
-                <p className="mt-2 text-sm">
-                  Best set: {formatWeight(lift.weight_kg, unit)} x {lift.reps}
-                </p>
-              </article>
+            {summary.main_lifts.map((lift) => (
+              <MainLiftCard
+                key={lift.program_exercise_id}
+                lift={lift}
+                unit={unit}
+              />
             ))}
           </div>
         )}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold">Muscles trained</h2>
-        {summary.muscle_groups.length === 0 ? (
-          <div className="app-card-flat p-4">
-            <p className="text-sm text-[color:var(--muted)]">
-              This fills in after finished workouts.
-            </p>
+      <section className="grid grid-cols-3 gap-2">
+        <div className="app-card-flat p-3">
+          <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+            Week
+          </p>
+          <p className="mt-1 text-2xl font-black">{summary.periods.week.workouts}</p>
+        </div>
+        <div className="app-card-flat p-3">
+          <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+            Month
+          </p>
+          <p className="mt-1 text-2xl font-black">{summary.periods.month.workouts}</p>
+        </div>
+        <div className="app-card-flat p-3">
+          <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+            Year
+          </p>
+          <p className="mt-1 text-2xl font-black">{summary.periods.year.workouts}</p>
+        </div>
+      </section>
+
+      {latestWeight ? (
+        <section className="app-card-flat p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-black">Bodyweight</h2>
+              <p className="mt-1 text-sm text-[color:var(--muted)]">
+                Latest {formatDate(latestWeight.logged_on)}
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 py-2 text-sm font-black">
+              <Scale aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
+              {formatWeight(latestWeight.weight_kg, unit)}
+            </div>
           </div>
-        ) : (
+        </section>
+      ) : null}
+
+      {summary.recent_bests.length > 0 ? (
+        <section className="space-y-3">
+          <h2 className="text-lg font-black">Recent bests</h2>
           <div className="grid gap-2">
-            {summary.muscle_groups.map((group) => (
-              <div
-                key={group.muscle_group}
-                className="app-card-flat p-3"
+            {summary.recent_bests.map((best) => (
+              <article
+                key={`${best.exercise_id}-${best.achieved_at}-${best.weight_kg}-${best.reps}`}
+                className="app-card-flat flex items-center justify-between gap-3 p-3"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="inline-flex items-center gap-2 text-sm font-black capitalize">
-                    <Activity
-                      aria-hidden="true"
-                      className="size-4 text-[color:var(--accent)]"
-                    />
-                    {group.muscle_group}
-                  </p>
-                  <p className="text-sm text-[color:var(--muted)]">
-                    {formatNumber(group.count)} sets
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-black">
+                    {best.exercise_name}
+                  </h3>
+                  <p className="mt-1 text-xs text-[color:var(--muted)]">
+                    {formatDate(best.achieved_at)}
                   </p>
                 </div>
-              </div>
+                <p className="shrink-0 text-sm font-black">
+                  {formatWeight(best.weight_kg, unit)} x {best.reps}
+                </p>
+              </article>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      ) : null}
 
       <Link
         href="/export"
