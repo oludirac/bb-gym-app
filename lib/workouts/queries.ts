@@ -51,6 +51,8 @@ export type Workout = {
 export type ActiveWorkoutSummary = {
   id: string;
   name: string | null;
+  sets_completed: number;
+  sets_total: number;
   started_at: string;
 };
 
@@ -460,7 +462,19 @@ export async function getActiveWorkout(supabase: SupabaseClient) {
 export async function getActiveWorkoutSummary(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("workouts")
-    .select("id, name, started_at")
+    .select(
+      `
+        id,
+        name,
+        started_at,
+        workout_exercises (
+          workout_sets (
+            completed_at,
+            id
+          )
+        )
+      `
+    )
     .eq("status", "active")
     .order("started_at", { ascending: false })
     .limit(1)
@@ -470,7 +484,32 @@ export async function getActiveWorkoutSummary(supabase: SupabaseClient) {
     throw new Error(error.message);
   }
 
-  return (data ?? null) as ActiveWorkoutSummary | null;
+  if (!data) {
+    return null;
+  }
+
+  const raw = data as {
+    id: string;
+    name: string | null;
+    started_at: string;
+    workout_exercises?: {
+      workout_sets?: {
+        completed_at: string | null;
+        id: string;
+      }[] | null;
+    }[] | null;
+  };
+  const sets = (raw.workout_exercises ?? []).flatMap(
+    (exercise) => exercise.workout_sets ?? []
+  );
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    sets_completed: sets.filter((set) => set.completed_at).length,
+    sets_total: sets.length,
+    started_at: raw.started_at
+  } satisfies ActiveWorkoutSummary;
 }
 
 export async function getWorkoutDetail(

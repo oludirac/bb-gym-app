@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Trophy } from "lucide-react";
+import { FileUp, Plus, Trophy } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { createProgram } from "@/app/(app)/programs/actions";
 import { weekdayOptions } from "@/lib/scheduling/weekdays";
@@ -11,6 +11,16 @@ type NewProgramPageProps = {
   }>;
 };
 
+const presets = [
+  { label: "2 day full body", value: "full_body_2" },
+  { label: "3 day full body", value: "full_body_3" },
+  { label: "3 day push/pull/legs", value: "ppl_3" },
+  { label: "4 day upper/lower", value: "upper_lower_4" },
+  { label: "5 day upper/lower/PPL", value: "ulppl_5" },
+  { label: "6 day PPL x2", value: "ppl_6" },
+  { label: "Custom names", value: "custom" }
+];
+
 export default async function NewProgramPage({
   searchParams
 }: NewProgramPageProps) {
@@ -18,142 +28,140 @@ export default async function NewProgramPage({
 
   return (
     <div className="space-y-6 pb-24">
-      <header className="space-y-2">
+      <header className="border-b border-[color:var(--panel-border)] pb-4">
         <Link
           href="/programs"
           className="inline-flex min-h-10 items-center text-sm font-black text-[color:var(--accent)]"
         >
           Back to plans
         </Link>
-        <p className="text-sm font-bold text-[color:var(--accent)]">New plan</p>
-        <h1 className="text-3xl font-black tracking-normal">Build a plan</h1>
+        <p className="mt-2 text-sm font-bold text-[color:var(--accent)]">
+          Build my split
+        </p>
+        <h1 className="mt-1 text-3xl font-black tracking-normal">
+          Start simple
+        </h1>
       </header>
 
+      <div className="grid gap-2">
+        <Link
+          href="/programs"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
+        >
+          <Trophy aria-hidden="true" className="size-4" />
+          Use starter plan
+        </Link>
+        <Link
+          href="/import/programs"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
+        >
+          <FileUp aria-hidden="true" className="size-4" />
+          Import CSV
+        </Link>
+      </div>
+
       {error ? (
-        <p className="rounded-xl border border-[color:var(--danger)]/40 bg-red-500/10 p-3 text-sm text-red-200">
+        <p className="rounded-md border border-[color:var(--danger)]/40 bg-red-500/10 p-3 text-sm text-red-200">
           {error}
         </p>
       ) : null}
 
       <form action={createProgram} className="space-y-5">
-        <section className="app-card space-y-4 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
-              <Trophy aria-hidden="true" className="size-5" />
-            </div>
-            <h2 className="text-base font-black">Plan</h2>
-          </div>
-
+        <section className="grid gap-4">
           <label className="grid gap-2">
-            <span className="text-sm font-bold">Name</span>
+            <span className="text-sm font-bold">Split name</span>
             <input
               name="name"
               required
-              placeholder="PPL"
+              placeholder="My PPL"
               className="field-base text-base"
             />
           </label>
 
           <label className="grid gap-2">
-            <span className="text-sm font-bold">Notes</span>
-            <textarea
-              name="description"
-              rows={3}
-              placeholder="Optional"
-              className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3 py-3 text-base outline-none focus:border-[color:var(--accent)]"
-            />
+            <span className="text-sm font-bold">Split template</span>
+            <select name="dayPreset" defaultValue="ppl_3" className="field-base">
+              {presets.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <fieldset className="grid gap-2">
-            <legend className="text-sm font-bold">Mode</legend>
-            <div className="grid gap-2">
-              <label className="flex min-h-14 items-center gap-3 rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
-                <input
-                  type="radio"
-                  name="scheduleType"
-                  value="sequence"
-                  defaultChecked
-                  className="size-4 accent-[color:var(--accent)]"
-                />
-                <span>
-                  <span className="block text-sm font-black">
-                    Next workout in order
-                  </span>
-                  <span className="block text-xs text-[color:var(--muted)]">
-                    Push, Pull, Legs, repeat
-                  </span>
+            <legend className="text-sm font-bold">Schedule</legend>
+            <label className="training-choice">
+              <input
+                type="radio"
+                name="scheduleType"
+                value="sequence"
+                defaultChecked
+                className="size-4 accent-[color:var(--accent)]"
+              />
+              <span>
+                <span className="block font-black">Rotating split</span>
+                <span className="block text-xs text-[color:var(--muted)]">
+                  Push, Pull, Legs, repeat
                 </span>
-              </label>
-              <label className="flex min-h-14 items-center gap-3 rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
-                <input
-                  type="radio"
-                  name="scheduleType"
-                  value="calendar"
-                  className="size-4 accent-[color:var(--accent)]"
-                />
-                <span>
-                  <span className="block text-sm font-black">
-                    Fixed weekdays
-                  </span>
-                  <span className="block text-xs text-[color:var(--muted)]">
-                    Monday Push, Wednesday Pull
-                  </span>
+              </span>
+            </label>
+            <label className="training-choice">
+              <input
+                type="radio"
+                name="scheduleType"
+                value="calendar"
+                className="size-4 accent-[color:var(--accent)]"
+              />
+              <span>
+                <span className="block font-black">Scheduled days</span>
+                <span className="block text-xs text-[color:var(--muted)]">
+                  Uses sensible weekdays from the preset
                 </span>
-              </label>
-            </div>
+              </span>
+            </label>
           </fieldset>
         </section>
 
-        <section className="space-y-3">
-          <div>
-            <h2 className="text-base font-black">Workout days</h2>
-            <p className="mt-1 text-sm text-[color:var(--muted)]">
-              Leave unused rows blank.
-            </p>
-          </div>
-
-          <div className="grid gap-3">
-            {Array.from({ length: 7 }, (_, index) => {
+        <details className="border-y border-[color:var(--panel-border)] py-3">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between text-sm font-black">
+            Custom day names
+            <span className="text-xs text-[color:var(--muted)]">
+              optional
+            </span>
+          </summary>
+          <div className="mt-3 grid gap-3">
+            {Array.from({ length: 6 }, (_, index) => {
               const row = index + 1;
 
               return (
-                <div key={row} className="app-card-flat grid gap-2 p-3">
-                  <label className="grid gap-1">
-                    <span className="text-xs font-bold uppercase text-[color:var(--muted)]">
-                      Day {row}
-                    </span>
-                    <input
-                      name={`dayName_${row}`}
-                      placeholder={row === 1 ? "Push" : row === 2 ? "Pull" : row === 3 ? "Legs" : ""}
-                      className="field-base text-base"
-                    />
-                  </label>
-                  <label className="grid gap-1">
-                    <span className="text-xs font-bold uppercase text-[color:var(--muted)]">
-                      Weekday
-                    </span>
-                    <select
-                      name={`weekday_${row}`}
-                      defaultValue=""
-                      className="field-base text-base"
-                    >
-                      <option value="">Sequence only</option>
-                      {weekdayOptions.map((weekday) => (
-                        <option key={weekday.value} value={weekday.value}>
-                          {weekday.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <div key={row} className="grid grid-cols-[1fr_8rem] gap-2">
+                  <input
+                    name={`dayName_${row}`}
+                    placeholder={`Day ${row}`}
+                    className="field-base text-base"
+                  />
+                  <select
+                    name={`weekday_${row}`}
+                    defaultValue=""
+                    className="field-base text-sm"
+                  >
+                    <option value="">Any</option>
+                    {weekdayOptions.map((weekday) => (
+                      <option key={weekday.value} value={weekday.value}>
+                        {weekday.shortLabel}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               );
             })}
           </div>
-        </section>
+        </details>
 
         <FormSubmitButton pendingLabel="Creating...">
           <Plus aria-hidden="true" className="size-5" />
-          Create plan
+          Create split
         </FormSubmitButton>
       </form>
     </div>

@@ -75,7 +75,7 @@ export default async function ExercisesPage({
           <h1 className="text-3xl font-semibold tracking-normal">Exercises</h1>
           <Link
             href="/exercises/new"
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-[color:var(--accent)] px-3 text-sm font-black text-zinc-950"
           >
             <Plus aria-hidden="true" className="size-4" />
             New
@@ -142,13 +142,13 @@ export default async function ExercisesPage({
         <div className="grid grid-cols-[1fr_auto] gap-2">
           <button
             type="submit"
-            className="min-h-12 rounded-xl bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950"
+            className="min-h-12 rounded-md bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950"
           >
             Apply
           </button>
           <Link
             href="/exercises"
-            className="flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black"
+            className="flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
           >
             Clear
           </Link>
@@ -182,7 +182,7 @@ export default async function ExercisesPage({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 gap-3">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#0d1117] text-[color:var(--muted)]">
                       <Dumbbell aria-hidden="true" className="size-5" />
                     </div>
                     <div className="min-w-0 space-y-1">

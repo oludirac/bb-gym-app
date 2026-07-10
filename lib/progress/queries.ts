@@ -80,6 +80,8 @@ type RawWorkoutExercise = {
     | null;
 };
 
+type CompletedSetRow = ReturnType<typeof completedSetRows>[number];
+
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
@@ -198,6 +200,124 @@ function completedSetRows(row: RawWorkoutExercise) {
     .filter((set): set is NonNullable<typeof set> => set !== null);
 }
 
+function calendarWeekIndex(start: Date, value: string) {
+  const diffMs = startOfDay(new Date(value)).getTime() - start.getTime();
+  return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+}
+
+function fallbackMainLiftsFromRows(rows: RawWorkoutExercise[]) {
+  const twelveWeeksAgo = startOfDay(new Date());
+  twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 77);
+  const byExercise = new Map<
+    string,
+    {
+      exercise_id: string;
+      exercise_name: string;
+      sets: CompletedSetRow[];
+    }
+  >();
+
+  for (const row of rows) {
+    const sets = completedSetRows(row);
+
+    if (sets.length === 0) {
+      continue;
+    }
+
+    const existing = byExercise.get(row.exercise_id) ?? {
+      exercise_id: row.exercise_id,
+      exercise_name: row.exercise_name_snapshot,
+      sets: []
+    };
+
+    existing.sets.push(...sets);
+    byExercise.set(row.exercise_id, existing);
+  }
+
+  return [...byExercise.values()]
+    .sort((a, b) => b.sets.length - a.sets.length)
+    .slice(0, 4)
+    .map((exercise) => {
+      const sortedSets = [...exercise.sets].sort(
+        (a, b) =>
+          new Date(a.achieved_at).getTime() -
+          new Date(b.achieved_at).getTime()
+      );
+      const bestByWeek = new Map<number, number>();
+
+      for (const set of sortedSets) {
+        const week = calendarWeekIndex(twelveWeeksAgo, set.started_at);
+
+        if (week < 1 || week > 12) {
+          continue;
+        }
+
+        const existing = bestByWeek.get(week) ?? null;
+        if (existing === null || set.estimated_one_rep_max > existing) {
+          bestByWeek.set(week, set.estimated_one_rep_max);
+        }
+      }
+
+      const firstSet = sortedSets[0] ?? null;
+      const lastSet = sortedSets.at(-1) ?? null;
+
+      return {
+        change_kg:
+          firstSet && lastSet
+            ? Math.round((lastSet.weight_kg - firstSet.weight_kg) * 100) / 100
+            : null,
+        current_weight_kg: lastSet?.weight_kg ?? null,
+        exercise_id: exercise.exercise_id,
+        exercise_name: exercise.exercise_name,
+        last_result: lastSet
+          ? {
+              achieved_at: lastSet.achieved_at,
+              reps: lastSet.reps,
+              weight_kg: lastSet.weight_kg
+            }
+          : null,
+        program_exercise_id: `logged:${exercise.exercise_id}`,
+        rep_range: "logged",
+        trend: Array.from({ length: 12 }, (_, index) => {
+          const week = index + 1;
+          return {
+            label: `W${week}`,
+            value: bestByWeek.get(week) ?? null,
+            week
+          };
+        })
+      } satisfies MainLiftProgress;
+    });
+}
+
+async function getLoggedWorkoutRows(supabase: SupabaseClient) {
+  const { data, error } = await supabase
+    .from("workout_exercises")
+    .select(
+      `
+        exercise_id,
+        exercise_name_snapshot,
+        program_exercise_id,
+        workouts!inner (
+          started_at,
+          status
+        ),
+        workout_sets (
+          weight_kg,
+          reps,
+          completed_at
+        )
+      `
+    )
+    .eq("workouts.status", "completed");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as RawWorkoutExercise[];
+}
+
 export async function getProgressSummary(supabase: SupabaseClient) {
   const now = new Date();
   const weekStart = startOfWeek(now);
@@ -248,15 +368,42 @@ export async function getProgressSummary(supabase: SupabaseClient) {
   };
 
   if (!enrollment) {
+    const loggedRows = await getLoggedWorkoutRows(supabase);
+    const recentBests = loggedRows
+      .flatMap(completedSetRows)
+      .sort(
+        (a, b) =>
+          b.estimated_one_rep_max - a.estimated_one_rep_max ||
+          new Date(b.achieved_at).getTime() - new Date(a.achieved_at).getTime()
+      )
+      .slice(0, 5)
+      .map(
+        ({
+          achieved_at,
+          estimated_one_rep_max,
+          exercise_id,
+          exercise_name,
+          reps,
+          weight_kg
+        }) => ({
+          achieved_at,
+          estimated_one_rep_max,
+          exercise_id,
+          exercise_name,
+          reps,
+          weight_kg
+        })
+      );
+
     return {
       active_block: null,
       bodyweight: (bodyweightResult.data ?? []).map((log) => ({
         logged_on: log.logged_on as string,
         weight_kg: Number(log.weight_kg)
       })),
-      main_lifts: [],
+      main_lifts: fallbackMainLiftsFromRows(loggedRows),
       periods,
-      recent_bests: []
+      recent_bests: recentBests
     } satisfies ProgressSummary;
   }
 
@@ -338,7 +485,7 @@ export async function getProgressSummary(supabase: SupabaseClient) {
       })
     );
 
-  const mainLifts = mainExercises.map((exercise) => {
+  const mainLifts = mainExercises.length > 0 ? mainExercises.map((exercise) => {
     const liftRows = workoutRows.filter(
       (row) =>
         row.program_exercise_id === exercise.id ||
@@ -413,7 +560,7 @@ export async function getProgressSummary(supabase: SupabaseClient) {
         };
       })
     } satisfies MainLiftProgress;
-  });
+  }) : fallbackMainLiftsFromRows(workoutRows);
 
   return {
     active_block: {

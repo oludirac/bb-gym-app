@@ -14,6 +14,7 @@ export type Profile = {
 export type UserSettings = {
   user_id: string;
   default_rest_seconds: number;
+  settings: Record<string, unknown>;
   theme: string;
 };
 
@@ -80,11 +81,21 @@ export async function getUserSettings(
 ) {
   const { data } = await supabase
     .from("user_settings")
-    .select("user_id, default_rest_seconds, theme")
+    .select("user_id, default_rest_seconds, settings, theme")
     .eq("user_id", userId)
     .maybeSingle();
 
-  return data as UserSettings | null;
+  const settings = data as UserSettings | null;
+
+  return settings
+    ? {
+        ...settings,
+        settings:
+          settings.settings && typeof settings.settings === "object"
+            ? settings.settings
+            : {}
+      }
+    : null;
 }
 
 async function getCurrentSessionUncached() {

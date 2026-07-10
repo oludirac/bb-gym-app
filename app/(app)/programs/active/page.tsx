@@ -106,20 +106,20 @@ export default async function ActiveProgramPage() {
       <div className="space-y-6">
         <header className="space-y-2">
           <p className="text-sm font-medium text-[color:var(--accent)]">
-            Current plan
+            Current split
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
-            No current plan
+            No split yet
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
-            Save a starter plan or use one of yours.
+            Pick a starter plan or build one of yours.
           </p>
         </header>
         <Link
           href="/programs"
           className="flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-semibold text-zinc-950"
         >
-          Choose a plan
+          Pick a starter plan
         </Link>
       </div>
     );
@@ -131,7 +131,7 @@ export default async function ActiveProgramPage() {
     return (
       <div className="space-y-4">
         <h1 className="text-3xl font-semibold tracking-normal">
-          Plan unavailable
+          Split unavailable
         </h1>
         <Link
           href="/programs"
@@ -147,15 +147,15 @@ export default async function ActiveProgramPage() {
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-sm font-medium text-[color:var(--accent)]">
-          Current plan
+          Current split
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">
           {program.name}
         </h1>
         <p className="text-sm leading-6 text-[color:var(--muted)]">
           {program.schedule_type === "calendar"
-            ? "Fixed weekdays. Today decides what is due."
-            : `Week ${enrollment.current_week}, day ${enrollment.current_day}. Next workout advances when you finish.`}
+            ? "Scheduled days. Today decides what is due."
+            : `Week ${enrollment.current_week}, day ${enrollment.current_day}. Advances when you finish.`}
         </p>
       </header>
 
@@ -208,7 +208,7 @@ export default async function ActiveProgramPage() {
           pendingLabel="Completing..."
           className="min-h-12 w-full rounded-md border border-[color:var(--panel-border)] px-4 text-base font-semibold disabled:cursor-wait disabled:opacity-70"
         >
-          Mark plan done
+          Mark split done
         </FormSubmitButton>
       </form>
     </div>

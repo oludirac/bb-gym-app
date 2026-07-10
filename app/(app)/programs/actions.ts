@@ -109,7 +109,7 @@ function isMoveDirection(value: string): value is MoveDirection {
 }
 
 function collectNewPlanDays(formData: FormData) {
-  return Array.from({ length: 7 }, (_, index) => {
+  const customDays = Array.from({ length: 7 }, (_, index) => {
     const row = index + 1;
     return {
       day_number: row,
@@ -117,6 +117,39 @@ function collectNewPlanDays(formData: FormData) {
       weekday: fieldNumber(formData, `weekday_${row}`)
     };
   }).filter((day) => day.name);
+  const preset = fieldValue(formData, "dayPreset");
+
+  if (customDays.length > 0 || preset === "custom") {
+    return customDays;
+  }
+
+  return presetPlanDays(preset);
+}
+
+function presetPlanDays(preset: string) {
+  const namesByPreset: Record<string, string[]> = {
+    full_body_2: ["Full Body A", "Full Body B"],
+    full_body_3: ["Full Body A", "Full Body B", "Full Body C"],
+    ppl_3: ["Push", "Pull", "Legs"],
+    upper_lower_4: ["Upper A", "Lower A", "Upper B", "Lower B"],
+    ulppl_5: ["Upper", "Lower", "Push", "Pull", "Legs"],
+    ppl_6: ["Push A", "Pull A", "Legs A", "Push B", "Pull B", "Legs B"]
+  };
+  const names = namesByPreset[preset] ?? namesByPreset.ppl_3;
+  const weekdayPresets: Record<number, number[]> = {
+    2: [1, 4],
+    3: [1, 3, 5],
+    4: [1, 2, 4, 5],
+    5: [1, 2, 3, 4, 5],
+    6: [1, 2, 3, 4, 5, 6]
+  };
+  const weekdays = weekdayPresets[names.length] ?? weekdayPresets[3];
+
+  return names.map((name, index) => ({
+    day_number: index + 1,
+    name,
+    weekday: weekdays[index] ?? null
+  }));
 }
 
 function validateCalendarWeekdays(

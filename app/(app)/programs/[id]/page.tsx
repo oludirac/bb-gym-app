@@ -152,7 +152,7 @@ export default async function ProgramDetailPage({
         <header className="space-y-2">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm font-medium text-[color:var(--accent)]">
-              {program.is_public ? "Starter plan" : "My plan"}
+              {program.is_public ? "Starter plan" : "My split"}
             </p>
             <span className="rounded-md border border-[color:var(--panel-border)] px-2 py-1 text-[11px] font-semibold capitalize">
               {formatValue(program.difficulty)}
@@ -163,8 +163,8 @@ export default async function ProgramDetailPage({
           </h1>
           <p className="text-sm font-bold text-[color:var(--accent)]">
             {program.schedule_type === "calendar"
-              ? "Fixed weekdays"
-              : "Next workout in order"}
+              ? "Scheduled days"
+              : "Rotating split"}
           </p>
           {program.description ? (
             <p className="text-sm leading-6 text-[color:var(--muted)]">
@@ -257,7 +257,7 @@ export default async function ProgramDetailPage({
                       </p>
                       <p className="mt-1 text-xs font-semibold capitalize text-[color:var(--accent)]">
                         {formatProgressionStyle(exercise.progression_style)}
-                        {exercise.track_as_main_lift ? " · main lift" : ""}
+                        {exercise.track_as_main_lift ? " | main lift" : ""}
                       </p>
                       <div className="mt-2 grid gap-1">
                         {groupedSetSummaries(
@@ -287,7 +287,7 @@ export default async function ProgramDetailPage({
             <form action={copyProgram}>
               <input type="hidden" name="programId" value={program.id} />
               <FormSubmitButton pendingLabel="Saving...">
-                Save plan
+                Save split
               </FormSubmitButton>
             </form>
           ) : (
@@ -295,7 +295,7 @@ export default async function ProgramDetailPage({
               <input type="hidden" name="programId" value={program.id} />
               <FormSubmitButton pendingLabel="Starting...">
                 <Play aria-hidden="true" className="size-4 fill-current" />
-                Use plan
+                Use this split
               </FormSubmitButton>
             </form>
           )}
@@ -322,7 +322,7 @@ export default async function ProgramDetailPage({
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--danger)]/50 px-3 text-sm font-semibold text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
             >
               <Trash2 aria-hidden="true" className="size-4" />
-              {program.is_public ? "Hide starter plan" : "Delete plan"}
+              {program.is_public ? "Hide starter" : "Delete split"}
             </FormSubmitButton>
           </form>
         </div>

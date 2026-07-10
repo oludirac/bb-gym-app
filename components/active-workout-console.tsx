@@ -635,92 +635,30 @@ export function ActiveWorkoutConsole({
     });
   };
 
+  const readyToFinish = allSets > 0 && doneSets >= allSets;
+
   return (
-    <div className="space-y-5 pb-44">
-      <header className="app-card p-5">
-        <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
-          Workout
-        </p>
-        <h1 className="mt-4 text-3xl font-black tracking-normal">
-          {workout.name ?? "Workout"}
-        </h1>
-        <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-          Started {formatDate(workout.started_at)} - {doneSets}/{allSets} sets
-          done
+    <div className="space-y-4 pb-36">
+      <header className="flex items-start justify-between gap-3 border-b border-[color:var(--panel-border)] pb-4">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase text-[color:var(--muted)]">
+            Workout
+          </p>
+          <h1 className="mt-1 truncate text-2xl font-black tracking-normal">
+            {workout.name ?? "Workout"}
+          </h1>
+          <p className="mt-1 text-sm text-[color:var(--muted)]">
+            {doneSets}/{allSets} sets done
+          </p>
+        </div>
+        <p className="shrink-0 text-xs font-bold text-[color:var(--muted)]">
+          {formatDate(workout.started_at)}
         </p>
       </header>
 
-      <details className="app-card-flat p-3">
-        <summary
-          onClick={() => loadExerciseCategory(addLiftCategory)}
-          className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black"
-        >
-          Add lift
-          <Plus aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
-        </summary>
-        <form
-          action={addExerciseToWorkout}
-          className="mt-3 grid gap-2"
-        >
-          <input type="hidden" name="workoutId" value={workout.id} />
-          <label className="grid gap-1">
-            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-              Body part
-            </span>
-            <select
-              value={addLiftCategory}
-              onChange={(event) => loadExerciseCategory(event.target.value)}
-              className="field-base text-base capitalize"
-            >
-              {bodyPartCategories.map((category) => (
-                <option key={category} value={category}>
-                  {formatExerciseCategory(category)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1">
-            <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-              Exercise
-            </span>
-            <select
-              name="exerciseId"
-              className="field-base text-base"
-              disabled={
-                isLoadingExerciseOptions ||
-                (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0
-              }
-              required
-            >
-              {isLoadingExerciseOptions ? <option>Loading...</option> : null}
-              {!isLoadingExerciseOptions &&
-              (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0 ? (
-                <option>No exercises found</option>
-              ) : null}
-              {(exerciseOptionsByCategory[addLiftCategory] ?? []).map((exercise) => (
-                <option key={exercise.id} value={exercise.id}>
-                  {exercise.name}
-                  {exercise.is_builtin ? "" : " (custom)"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <FormSubmitButton
-            disabled={
-              isLoadingExerciseOptions ||
-              (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0
-            }
-            pendingLabel="Adding..."
-            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-          >
-            Add
-          </FormSubmitButton>
-        </form>
-      </details>
-
       {currentExercise && currentSet ? (
-        <section className="app-card overflow-hidden">
-          <div className="border-b border-[color:var(--panel-border)] p-4">
+        <section className="overflow-hidden border-y border-[color:var(--panel-border)]">
+          <div className="border-b border-[color:var(--panel-border)] py-4">
             <p className="text-xs font-black uppercase text-[color:var(--muted)]">
               Focus mode
             </p>
@@ -733,7 +671,7 @@ export function ActiveWorkoutConsole({
                   Set {currentSet.sort_order} of {currentExercise.sets.length}
                 </p>
               </div>
-              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[color:var(--accent)] text-lg font-black text-zinc-950">
+              <div className="grid size-11 shrink-0 place-items-center rounded-md bg-[color:var(--accent)] text-lg font-black text-zinc-950">
                 {currentSet.sort_order}
               </div>
             </div>
@@ -762,7 +700,7 @@ export function ActiveWorkoutConsole({
             </div>
           </div>
 
-          <div className="space-y-4 p-4">
+          <div className="space-y-4 py-4">
             {isCardio ? (
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-1">
@@ -819,7 +757,7 @@ export function ActiveWorkoutConsole({
               </div>
             ) : (
               <div className="grid gap-3">
-                <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
+                <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
                   <p className="text-xs font-black uppercase text-[color:var(--muted)]">
                     Planned weight
                   </p>
@@ -831,7 +769,7 @@ export function ActiveWorkoutConsole({
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+                <div className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
                   <p className="text-xs font-black uppercase text-[color:var(--muted)]">
                     Reps
                   </p>
@@ -843,11 +781,11 @@ export function ActiveWorkoutConsole({
                           reps: String(Math.max(0, Number(draft.reps || 0) - 1))
                         })
                       }
-                      className="grid min-h-14 place-items-center rounded-2xl border border-[color:var(--panel-border)] text-3xl font-black"
+                      className="grid min-h-14 place-items-center rounded-md border border-[color:var(--panel-border)] text-3xl font-black"
                     >
                       -
                     </button>
-                    <div className="grid min-h-16 place-items-center rounded-2xl bg-[color:var(--panel)] text-4xl font-black">
+                    <div className="grid min-h-16 place-items-center rounded-md bg-[color:var(--panel)] text-4xl font-black">
                       {draft.reps || "0"}
                     </div>
                     <button
@@ -857,14 +795,14 @@ export function ActiveWorkoutConsole({
                           reps: String(Number(draft.reps || 0) + 1)
                         })
                       }
-                      className="grid min-h-14 place-items-center rounded-2xl border border-[color:var(--panel-border)] text-3xl font-black"
+                      className="grid min-h-14 place-items-center rounded-md border border-[color:var(--panel-border)] text-3xl font-black"
                     >
                       +
                     </button>
                   </div>
                 </div>
 
-                <details className="rounded-2xl border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-3">
+                <details className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-3">
                   <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between text-sm font-black text-[color:var(--muted)]">
                     <span className="inline-flex items-center gap-2">
                       <Settings aria-hidden="true" className="size-4" />
@@ -895,7 +833,7 @@ export function ActiveWorkoutConsole({
                       type="button"
                       onClick={savePlanWeight}
                       disabled={!currentSet.program_set_id}
-                      className="min-h-11 rounded-xl border border-[color:var(--panel-border)] px-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-h-11 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Use as new plan weight
                     </button>
@@ -908,7 +846,7 @@ export function ActiveWorkoutConsole({
               type="button"
               onClick={completeCurrentSet}
               disabled={savingSetId === currentSet.id}
-              className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950 shadow-[0_14px_34px_rgba(245,158,11,0.22)] transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+              className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950 transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
             >
               <Check aria-hidden="true" className="size-5" />
               {currentSet.completed_at ? "Update set" : "Complete set"}
@@ -933,10 +871,109 @@ export function ActiveWorkoutConsole({
         <section className="app-card-flat p-4">
           <h2 className="text-base font-black">No lifts yet</h2>
           <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-            Add the first lift above.
+            Open Workout tools and add the first lift.
           </p>
         </section>
       )}
+
+      <details className="border-y border-[color:var(--panel-border)] py-2">
+        <summary
+          onClick={() => loadExerciseCategory(addLiftCategory)}
+          className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black"
+        >
+          Workout tools
+          <Plus aria-hidden="true" className="size-4 text-[color:var(--muted)]" />
+        </summary>
+        <div className="mt-3 grid gap-4">
+          <form action={addExerciseToWorkout} className="grid gap-2">
+            <input type="hidden" name="workoutId" value={workout.id} />
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                Body part
+              </span>
+              <select
+                value={addLiftCategory}
+                onChange={(event) => loadExerciseCategory(event.target.value)}
+                className="field-base text-base capitalize"
+              >
+                {bodyPartCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {formatExerciseCategory(category)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1">
+              <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                Exercise
+              </span>
+              <select
+                name="exerciseId"
+                className="field-base text-base"
+                disabled={
+                  isLoadingExerciseOptions ||
+                  (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0
+                }
+                required
+              >
+                {isLoadingExerciseOptions ? <option>Loading...</option> : null}
+                {!isLoadingExerciseOptions &&
+                (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0 ? (
+                  <option>No exercises found</option>
+                ) : null}
+                {(exerciseOptionsByCategory[addLiftCategory] ?? []).map(
+                  (exercise) => (
+                    <option key={exercise.id} value={exercise.id}>
+                      {exercise.name}
+                      {exercise.is_builtin ? "" : " (custom)"}
+                    </option>
+                  )
+                )}
+              </select>
+            </label>
+            <FormSubmitButton
+              disabled={
+                isLoadingExerciseOptions ||
+                (exerciseOptionsByCategory[addLiftCategory] ?? []).length === 0
+              }
+              pendingLabel="Adding..."
+              className="inline-flex min-h-12 items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+            >
+              Add lift
+            </FormSubmitButton>
+          </form>
+
+          <div className="grid gap-2">
+            <form action={finishWorkout}>
+              <input type="hidden" name="workoutId" value={workout.id} />
+              <FormSubmitButton
+                pendingLabel="Completing..."
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black disabled:cursor-wait disabled:opacity-70"
+              >
+                <Flag aria-hidden="true" className="size-4" />
+                Finish early
+              </FormSubmitButton>
+            </form>
+            <Link
+              href="/workouts"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
+            >
+              <History aria-hidden="true" className="size-4" />
+              History
+            </Link>
+            <form action={cancelActiveWorkout}>
+              <input type="hidden" name="workoutId" value={workout.id} />
+              <FormSubmitButton
+                pendingLabel="Cancelling..."
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+              >
+                <X aria-hidden="true" className="size-4" />
+                Cancel workout
+              </FormSubmitButton>
+            </form>
+          </div>
+        </div>
+      </details>
 
       <details className="app-card-flat p-3">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black">
@@ -1108,33 +1145,19 @@ export function ActiveWorkoutConsole({
         </div>
       </details>
 
-      <div className="fixed inset-x-0 bottom-[5.75rem] z-20 px-4">
-        <div className="mx-auto grid max-w-md grid-cols-[1fr_auto] gap-2 rounded-2xl border border-[color:var(--panel-border)] bg-[#080a0d]/95 p-2 shadow-[0_16px_42px_rgba(0,0,0,0.45)] backdrop-blur-xl">
-          <form action={finishWorkout}>
-            <input type="hidden" name="workoutId" value={workout.id} />
-            <FormSubmitButton pendingLabel="Completing...">
-              <Flag aria-hidden="true" className="size-5" />
-              Complete workout
-            </FormSubmitButton>
-          </form>
-          <form action={cancelActiveWorkout}>
-            <input type="hidden" name="workoutId" value={workout.id} />
-            <FormSubmitButton
-              pendingLabel="Cancelling..."
-              className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-            >
-              <X aria-hidden="true" className="size-4" />
-            </FormSubmitButton>
-          </form>
-          <Link
-            href="/workouts"
-            className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black"
-          >
-            <History aria-hidden="true" className="size-4" />
-            History
-          </Link>
+      {readyToFinish ? (
+        <div className="fixed inset-x-0 bottom-[5.75rem] z-20 px-4">
+          <div className="mx-auto max-w-md rounded-md border border-[color:var(--panel-border)] bg-[#080a0d]/95 p-2 backdrop-blur-xl">
+            <form action={finishWorkout}>
+              <input type="hidden" name="workoutId" value={workout.id} />
+              <FormSubmitButton pendingLabel="Completing...">
+                <Flag aria-hidden="true" className="size-5" />
+                Complete workout
+              </FormSubmitButton>
+            </form>
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import Link from "next/link";
 import {
-  BarChart3,
   CalendarDays,
   Dumbbell,
-  Flame,
+  FileUp,
   History,
   Play,
+  Plus,
   Trophy
 } from "lucide-react";
 import { FormSubmitButton } from "@/components/form-submit-button";
@@ -14,17 +14,9 @@ import {
   dismissMissedProgramDay,
   startWorkoutFromProgramDay
 } from "@/app/(app)/programs/actions";
-import { getTodayPlanOverview } from "@/lib/programs/queries";
+import { getTodayPlanOverview, type ProgramDay } from "@/lib/programs/queries";
 import { getActiveWorkoutSummary } from "@/lib/workouts/queries";
 import { requireUser } from "@/lib/auth/session";
-import { weekdayLabel } from "@/lib/scheduling/weekdays";
-
-const quickActions = [
-  { href: "/workouts/active", icon: Dumbbell, label: "Workout", meta: "Current" },
-  { href: "/progress", icon: BarChart3, label: "Progress", meta: "Stats" },
-  { href: "/programs", icon: Trophy, label: "Plans", meta: "Splits" },
-  { href: "/workouts", icon: History, label: "History", meta: "Finished" }
-];
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -50,143 +42,214 @@ function formatTodayDate() {
   }).format(new Date());
 }
 
+function daySummary(day: ProgramDay | null) {
+  if (!day) {
+    return {
+      exercises: [],
+      setCount: 0
+    };
+  }
+
+  return {
+    exercises: day.exercises.slice(0, 4).map((exercise) => exercise.exercise_name),
+    setCount: day.exercises.reduce(
+      (total, exercise) => total + exercise.sets.length,
+      0
+    )
+  };
+}
+
+function scheduleLabel(value: string) {
+  return value === "calendar" ? "Scheduled days" : "Rotating split";
+}
+
 export default async function DashboardPage() {
   const { supabase } = await requireUser();
   const [activeWorkout, todayPlan] = await Promise.all([
     getActiveWorkoutSummary(supabase),
     getTodayPlanOverview(supabase)
   ]);
-  const dueDay = todayPlan?.program_day;
-  const isCalendar = todayPlan?.schedule_type === "calendar";
-  const heroTitle = activeWorkout
-    ? activeWorkout.name ?? "Workout"
-    : dueDay
-      ? dueDay.name
-      : todayPlan?.status === "rest"
-        ? "Rest day"
-        : "Start a workout";
-  const heroMeta = activeWorkout
-    ? `Started ${formatDate(activeWorkout.started_at)}`
-    : todayPlan
-      ? `${todayPlan.program_name} - ${
-          isCalendar ? "Fixed weekdays" : "Next in order"
-        }`
-      : "No plan selected";
+  const dueDay = todayPlan?.program_day ?? null;
+  const dueSummary = daySummary(dueDay);
+  const missedSummary = daySummary(todayPlan?.missed?.day ?? null);
   const todayDate = formatTodayDate();
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
+      <header className="border-b border-[color:var(--panel-border)] pb-4">
         <p className="text-sm font-bold text-[color:var(--accent)]">
           {todayDate}
         </p>
-        <h1 className="text-4xl font-black tracking-normal">Today</h1>
+        <h1 className="mt-1 text-4xl font-black tracking-normal">Today</h1>
       </header>
 
-      <section className="app-card overflow-hidden p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
-              {activeWorkout
-                ? "In progress"
-                : todayPlan?.status === "done"
-                  ? "Done today"
-                  : todayPlan?.status === "rest"
-                    ? "No scheduled lift"
-                    : todayPlan
-                      ? todayPlan.schedule_type === "calendar"
-                        ? "Fixed weekdays"
-                        : "Next in order"
-                      : "Quick start"}
+      {activeWorkout ? (
+        <section className="space-y-5">
+          <div>
+            <p className="text-sm font-bold text-[color:var(--success)]">
+              In progress
             </p>
-            <h2 className="mt-4 text-2xl font-black">{heroTitle}</h2>
-            <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-              {heroMeta}
+            <h2 className="mt-2 text-3xl font-black">
+              {activeWorkout.name ?? "Workout"}
+            </h2>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              Started {formatDate(activeWorkout.started_at)}.{" "}
+              {activeWorkout.sets_completed}/{activeWorkout.sets_total} sets
+              done.
             </p>
           </div>
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-[color:var(--accent)] text-zinc-950">
-            <Flame aria-hidden="true" className="size-7" strokeWidth={2.6} />
+          <Link
+            href="/workouts/active"
+            className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950 transition active:scale-[0.99]"
+          >
+            <Play aria-hidden="true" className="size-5 fill-current" />
+            Resume workout
+          </Link>
+        </section>
+      ) : todayPlan?.status === "done" && dueDay ? (
+        <section className="space-y-5">
+          <div>
+            <p className="text-sm font-bold text-[color:var(--success)]">
+              Done today
+            </p>
+            <h2 className="mt-2 text-3xl font-black">{dueDay.name}</h2>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              Scheduled for {formatDayDate(todayPlan.scheduled_for)}.
+            </p>
           </div>
-        </div>
-
-        <div className="mt-5">
-          {activeWorkout ? (
-            <Link
-              href="/workouts/active"
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-base font-extrabold text-zinc-950 shadow-[0_14px_34px_rgba(245,158,11,0.22)] transition active:scale-[0.99]"
-            >
-              <Play aria-hidden="true" className="size-5 fill-current" />
-              Resume workout
-            </Link>
-          ) : todayPlan?.status === "done" ? (
+          <div className="grid gap-2">
             <Link
               href="/workouts"
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-base font-extrabold text-zinc-950 shadow-[0_14px_34px_rgba(245,158,11,0.22)] transition active:scale-[0.99]"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
             >
-              <History aria-hidden="true" className="size-5" />
+              <History aria-hidden="true" className="size-4" />
               View history
             </Link>
-          ) : dueDay ? (
-            <form action={startWorkoutFromProgramDay}>
-              <input
-                type="hidden"
-                name="enrollmentId"
-                value={todayPlan.enrollment_id}
-              />
-              <input type="hidden" name="programDayId" value={dueDay.id} />
-              <input
-                type="hidden"
-                name="scheduledFor"
-                value={todayPlan.scheduled_for}
-              />
-              <FormSubmitButton pendingLabel="Starting...">
-                <Play aria-hidden="true" className="size-5 fill-current" />
-                Start {dueDay.name}
-              </FormSubmitButton>
-            </form>
-          ) : (
             <form action={startBlankWorkout}>
-              <FormSubmitButton pendingLabel="Starting...">
-                <Play aria-hidden="true" className="size-5 fill-current" />
-                Start workout
+              <FormSubmitButton
+                pendingLabel="Starting..."
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+              >
+                <Plus aria-hidden="true" className="size-4" />
+                Start extra workout
               </FormSubmitButton>
             </form>
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : dueDay && todayPlan ? (
+        <section className="space-y-5">
+          <div>
+            <p className="text-sm font-bold text-[color:var(--accent)]">
+              {scheduleLabel(todayPlan.schedule_type)}
+            </p>
+            <h2 className="mt-2 text-3xl font-black">
+              {dueDay.name} is up
+            </h2>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              {dueSummary.exercises.length} lifts, {dueSummary.setCount} sets.
+            </p>
+          </div>
 
-      {todayPlan?.status === "done" && dueDay ? (
-        <section className="app-card-flat p-4">
-          <h2 className="text-base font-black">{dueDay.name} done</h2>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            Scheduled for {formatDayDate(todayPlan.scheduled_for)}.
-          </p>
-          <form action={startBlankWorkout} className="mt-3">
-            <FormSubmitButton
-              pendingLabel="Starting..."
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
-            >
-              <Play aria-hidden="true" className="size-4 fill-current" />
-              Start another workout
+          {dueSummary.exercises.length > 0 ? (
+            <div className="divide-y divide-[color:var(--panel-border)] border-y border-[color:var(--panel-border)]">
+              {dueSummary.exercises.map((exercise) => (
+                <p key={exercise} className="py-3 text-sm font-bold">
+                  {exercise}
+                </p>
+              ))}
+            </div>
+          ) : null}
+
+          <form action={startWorkoutFromProgramDay}>
+            <input
+              type="hidden"
+              name="enrollmentId"
+              value={todayPlan.enrollment_id}
+            />
+            <input type="hidden" name="programDayId" value={dueDay.id} />
+            <input
+              type="hidden"
+              name="scheduledFor"
+              value={todayPlan.scheduled_for}
+            />
+            <FormSubmitButton pendingLabel="Starting...">
+              <Play aria-hidden="true" className="size-5 fill-current" />
+              Start {dueDay.name}
             </FormSubmitButton>
           </form>
         </section>
-      ) : null}
+      ) : todayPlan ? (
+        <section className="space-y-5">
+          <div>
+            <p className="text-sm font-bold text-[color:var(--muted)]">
+              Rest day
+            </p>
+            <h2 className="mt-2 text-3xl font-black">No lift due</h2>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              {todayPlan.program_name} is still your active split.
+            </p>
+          </div>
+          <Link
+            href="/programs/active"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
+          >
+            <Trophy aria-hidden="true" className="size-4" />
+            View split
+          </Link>
+        </section>
+      ) : (
+        <section className="space-y-5">
+          <div>
+            <p className="text-sm font-bold text-[color:var(--accent)]">
+              Start fresh
+            </p>
+            <h2 className="mt-2 text-3xl font-black">No split yet</h2>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              Pick a starter plan, build your own, or log a blank session.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Link
+              href="/programs"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950"
+            >
+              <Trophy aria-hidden="true" className="size-4" />
+              Pick starter plan
+            </Link>
+            <Link
+              href="/programs/new"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Build my split
+            </Link>
+            <form action={startBlankWorkout}>
+              <FormSubmitButton
+                pendingLabel="Starting..."
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+              >
+                <Dumbbell aria-hidden="true" className="size-4" />
+                Start blank workout
+              </FormSubmitButton>
+            </form>
+          </div>
+        </section>
+      )}
 
       {todayPlan?.missed ? (
-        <section className="app-card-flat p-4">
+        <section className="border-t border-[color:var(--panel-border)] pt-5">
           <div className="flex items-start gap-3">
             <CalendarDays
               aria-hidden="true"
-              className="mt-0.5 size-5 shrink-0 text-[color:var(--accent)]"
+              className="mt-0.5 size-5 shrink-0 text-[color:var(--muted)]"
             />
             <div className="min-w-0 flex-1">
               <h2 className="text-base font-black">
                 Missed {todayPlan.missed.day.name}
               </h2>
               <p className="mt-1 text-sm text-[color:var(--muted)]">
-                {formatDayDate(todayPlan.missed.scheduled_for)}. Train it now
-                or leave it missed.
+                {formatDayDate(todayPlan.missed.scheduled_for)}.{" "}
+                {missedSummary.setCount} planned sets.
               </p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <form action={startWorkoutFromProgramDay}>
@@ -206,7 +269,7 @@ export default async function DashboardPage() {
                     value={todayPlan.missed.scheduled_for}
                   />
                   <FormSubmitButton pendingLabel="Starting...">
-                    Start missed lift
+                    Train missed day
                   </FormSubmitButton>
                 </form>
                 <form action={dismissMissedProgramDay}>
@@ -226,10 +289,10 @@ export default async function DashboardPage() {
                     value={todayPlan.missed.scheduled_for}
                   />
                   <FormSubmitButton
-                    pendingLabel="Dismissing..."
-                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-4 text-base font-extrabold text-[color:var(--text)] transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+                    pendingLabel="Skipping..."
+                    className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-4 text-base font-black text-[color:var(--foreground)] transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
                   >
-                    Dismiss
+                    Skip this missed day
                   </FormSubmitButton>
                 </form>
               </div>
@@ -238,43 +301,21 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      {isCalendar && dueDay?.schedule_weekdays.length ? (
-        <section className="app-card-flat p-4">
-          <h2 className="text-base font-black">Fixed days</h2>
-          <p className="mt-1 text-sm text-[color:var(--muted)]">
-            {dueDay.name}:{" "}
-            {dueDay.schedule_weekdays
-              .map((weekday) => weekdayLabel(weekday, "short"))
-              .join(", ")}
-          </p>
-        </section>
-      ) : null}
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-black">Shortcuts</h2>
-        <div className="grid grid-cols-2 gap-3">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-
-            return (
-              <Link
-                key={action.href}
-                href={action.href}
-                className="app-card-flat min-h-28 p-4 transition active:scale-[0.99] active:border-[color:var(--accent)]"
-              >
-                <Icon
-                  aria-hidden="true"
-                  className="size-6 text-[color:var(--accent)]"
-                  strokeWidth={2.5}
-                />
-                <h3 className="mt-4 text-base font-black">{action.label}</h3>
-                <p className="mt-1 text-sm text-[color:var(--muted)]">
-                  {action.meta}
-                </p>
-              </Link>
-            );
-          })}
-        </div>
+      <section className="grid grid-cols-2 gap-2 border-t border-[color:var(--panel-border)] pt-5">
+        <Link
+          href="/import/programs"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-black text-[color:var(--muted)]"
+        >
+          <FileUp aria-hidden="true" className="size-4" />
+          Import CSV
+        </Link>
+        <Link
+          href="/progress"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-black text-[color:var(--muted)]"
+        >
+          <History aria-hidden="true" className="size-4" />
+          Your numbers
+        </Link>
       </section>
     </div>
   );

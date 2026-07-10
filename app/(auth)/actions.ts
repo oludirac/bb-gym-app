@@ -2,7 +2,8 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ensureUserRows } from "@/lib/auth/session";
+import { ensureUserRows, getUserSettings } from "@/lib/auth/session";
+import { shouldShowOnboarding } from "@/lib/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 function fieldValue(formData: FormData, key: string) {
@@ -54,6 +55,11 @@ export async function signIn(formData: FormData) {
 
   if (user) {
     await ensureUserRows(supabase, user);
+
+    const settings = await getUserSettings(supabase, user.id);
+    if (await shouldShowOnboarding(supabase, user.id, settings)) {
+      redirect("/onboarding");
+    }
   }
 
   redirect("/dashboard");
@@ -108,6 +114,13 @@ export async function signUp(formData: FormData) {
   }
 
   if (data.session) {
+    if (data.user) {
+      const settings = await getUserSettings(supabase, data.user.id);
+      if (await shouldShowOnboarding(supabase, data.user.id, settings)) {
+        redirect("/onboarding");
+      }
+    }
+
     redirect("/dashboard");
   }
 

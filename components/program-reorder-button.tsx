@@ -63,7 +63,7 @@ export function ProgramReorderButton(props: ProgramReorderButtonProps) {
       disabled={props.disabled || isPending}
       aria-disabled={props.disabled || isPending}
       aria-label={`Move ${props.target} ${props.direction}`}
-      className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35"
+      className="inline-flex size-10 items-center justify-center rounded-md border border-[color:var(--panel-border)] text-[color:var(--muted)] transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35"
     >
       <Icon aria-hidden="true" className="size-4" />
     </button>

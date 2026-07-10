@@ -204,7 +204,7 @@ export function ProgramExerciseCard({
         <div className="space-y-3 p-3 pt-0">
           <form
             action={updateProgramExerciseSettings}
-            className="grid gap-2 rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3"
+            className="grid gap-2 rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3"
           >
             <input type="hidden" name="programId" value={programId} />
             <input
@@ -289,7 +289,7 @@ export function ProgramExerciseCard({
             type="button"
             onClick={addSet}
             disabled={isPending}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--accent)] px-4 text-base font-extrabold text-zinc-950 shadow-[0_14px_34px_rgba(245,158,11,0.22)] transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md bg-[color:var(--accent)] px-4 text-base font-extrabold text-zinc-950 transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
           >
             <Plus aria-hidden="true" className="size-4" />
             {isPending ? "Adding..." : "Add set"}

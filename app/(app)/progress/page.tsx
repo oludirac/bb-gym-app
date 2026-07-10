@@ -75,7 +75,7 @@ function MainLiftCard({
             {lift.rep_range} reps
           </p>
         </div>
-        <div className="rounded-xl bg-[color:var(--accent)] px-3 py-2 text-sm font-black text-zinc-950">
+        <div className="rounded-md bg-[color:var(--accent)] px-3 py-2 text-sm font-black text-zinc-950">
           {lift.current_weight_kg === null
             ? "-"
             : formatWeight(lift.current_weight_kg, unit)}
@@ -83,7 +83,7 @@ function MainLiftCard({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+        <div className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
             Last
           </p>
@@ -95,9 +95,9 @@ function MainLiftCard({
               : "No sets"}
           </p>
         </div>
-        <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+        <div className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-            Since W1
+            Since first
           </p>
           <p className="mt-1 text-sm font-black">
             {formatSignedKg(lift.change_kg, unit)}
@@ -157,7 +157,7 @@ export default async function ProgressPage() {
             </div>
             <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
               <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-                Workouts in block
+                Workouts on split
               </p>
               <p className="mt-1 text-3xl font-black">
                 {summary.active_block.workouts_completed_block}
@@ -173,7 +173,7 @@ export default async function ProgressPage() {
           </p>
           <Link
             href="/programs"
-            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950"
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950"
           >
             Open plans
           </Link>
@@ -188,7 +188,7 @@ export default async function ProgressPage() {
         {summary.main_lifts.length === 0 ? (
           <div className="app-card-flat p-4">
             <p className="text-sm text-[color:var(--muted)]">
-              Mark lifts as main lifts in your plan to track them here.
+              Finish weighted sets and your main lifts will show here.
             </p>
           </div>
         ) : (
@@ -244,12 +244,12 @@ export default async function ProgressPage() {
         <section className="app-card-flat p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-black">Bodyweight</h2>
+              <h2 className="text-base font-black">Latest bodyweight</h2>
               <p className="mt-1 text-sm text-[color:var(--muted)]">
                 Latest {formatDate(latestWeight.logged_on)}
               </p>
             </div>
-            <div className="inline-flex items-center gap-2 rounded-xl border border-[color:var(--panel-border)] px-3 py-2 text-sm font-black">
+            <div className="inline-flex items-center gap-2 rounded-md border border-[color:var(--panel-border)] px-3 py-2 text-sm font-black">
               <Scale aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
               {formatWeight(latestWeight.weight_kg, unit)}
             </div>
@@ -259,7 +259,7 @@ export default async function ProgressPage() {
 
       {summary.recent_bests.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-black">Recent bests</h2>
+          <h2 className="text-lg font-black">Best sets</h2>
           <div className="grid gap-2">
             {summary.recent_bests.map((best) => (
               <article

@@ -8,14 +8,16 @@ import {
   Scale,
   Settings,
   Smartphone,
-  Target
+  Target,
+  Trophy
 } from "lucide-react";
 import { signOut } from "@/app/(auth)/actions";
 import { FormSubmitButton } from "@/components/form-submit-button";
 import { requireUser } from "@/lib/auth/session";
 
 const moreItems = [
-  { href: "/exercises", icon: LibraryBig, label: "Exercises", meta: "Exercise list" },
+  { href: "/programs", icon: Trophy, label: "My split", meta: "Plans" },
+  { href: "/exercises", icon: LibraryBig, label: "Exercise list", meta: "Library" },
   { href: "/bodyweight", icon: Scale, label: "Weight", meta: "Weigh-ins" },
   { href: "/goals", icon: Target, label: "Goals", meta: "Targets" },
   { href: "/import/programs", icon: FileUp, label: "Import", meta: "Plan CSV" },
@@ -42,10 +44,10 @@ export default async function MorePage() {
             <Link
               key={item.href}
               href={item.href}
-              className="app-card-flat flex min-h-16 items-center justify-between gap-3 p-4 transition active:scale-[0.99] active:border-[color:var(--accent)]"
+              className="flex min-h-16 items-center justify-between gap-3 border-b border-[color:var(--panel-border)] py-3 transition active:opacity-80"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--panel)] text-[color:var(--muted)]">
                   <Icon aria-hidden="true" className="size-5" strokeWidth={2.4} />
                 </div>
                 <div className="min-w-0">

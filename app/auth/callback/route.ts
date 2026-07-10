@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { ensureUserRows } from "@/lib/auth/session";
+import { ensureUserRows, getUserSettings } from "@/lib/auth/session";
+import { shouldShowOnboarding } from "@/lib/onboarding";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -16,6 +17,14 @@ export async function GET(request: Request) {
 
     if (user) {
       await ensureUserRows(supabase, user);
+
+      const settings = await getUserSettings(supabase, user.id);
+      if (
+        redirectTo === "/dashboard" &&
+        (await shouldShowOnboarding(supabase, user.id, settings))
+      ) {
+        return NextResponse.redirect(new URL("/onboarding", requestUrl.origin));
+      }
     }
   }
 

@@ -163,14 +163,14 @@ export default async function EditProgramPage({
           href={`/programs/${program.id}`}
           className="inline-flex min-h-10 items-center text-sm font-black text-[color:var(--accent)]"
         >
-          Back to plan
+          Back to split
         </Link>
-        <p className="text-sm font-bold text-[color:var(--accent)]">Edit plan</p>
+        <p className="text-sm font-bold text-[color:var(--accent)]">Edit split</p>
         <h1 className="text-3xl font-black tracking-normal">{program.name}</h1>
       </header>
 
       {error ? (
-        <p className="rounded-xl border border-[color:var(--danger)]/40 bg-red-500/10 p-3 text-sm text-red-200">
+        <p className="rounded-md border border-[color:var(--danger)]/40 bg-red-500/10 p-3 text-sm text-red-200">
           {error}
         </p>
       ) : null}
@@ -192,13 +192,13 @@ export default async function EditProgramPage({
             name="description"
             rows={3}
             defaultValue={program.description ?? ""}
-            className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3 py-3 text-base outline-none focus:border-[color:var(--accent)]"
+            className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] px-3 py-3 text-base outline-none focus:border-[color:var(--accent)]"
           />
         </label>
 
         <fieldset className="grid gap-2">
           <legend className="text-sm font-bold">Mode</legend>
-          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
+          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
             <input
               type="radio"
               name="scheduleType"
@@ -206,9 +206,9 @@ export default async function EditProgramPage({
               defaultChecked={program.schedule_type === "sequence"}
               className="size-4 accent-[color:var(--accent)]"
             />
-            <span className="text-sm font-black">Next workout in order</span>
+          <span className="text-sm font-black">Rotating split</span>
           </label>
-          <label className="flex min-h-12 items-center gap-3 rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
+          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
             <input
               type="radio"
               name="scheduleType"
@@ -216,7 +216,7 @@ export default async function EditProgramPage({
               defaultChecked={program.schedule_type === "calendar"}
               className="size-4 accent-[color:var(--accent)]"
             />
-            <span className="text-sm font-black">Fixed weekdays</span>
+            <span className="text-sm font-black">Scheduled days</span>
           </label>
         </fieldset>
 
@@ -243,7 +243,7 @@ export default async function EditProgramPage({
           ))}
         </section>
 
-        <FormSubmitButton pendingLabel="Saving...">Save plan</FormSubmitButton>
+        <FormSubmitButton pendingLabel="Saving...">Save split</FormSubmitButton>
       </form>
 
       <form
@@ -253,10 +253,10 @@ export default async function EditProgramPage({
         <input type="hidden" name="programId" value={program.id} />
         <FormSubmitButton
           pendingLabel="Deleting..."
-          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
         >
           <Trash2 aria-hidden="true" className="size-4" />
-          Delete plan
+          Delete split
         </FormSubmitButton>
       </form>
 

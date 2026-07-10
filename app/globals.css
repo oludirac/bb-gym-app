@@ -5,15 +5,15 @@
   --background: #080a0d;
   --foreground: #f6f1e8;
   --muted: #a7adb7;
-  --panel: #141820;
-  --panel-raised: #1b222c;
-  --panel-border: #2a3340;
+  --panel: #11151b;
+  --panel-raised: #161b22;
+  --panel-border: #242b35;
   --accent: #f59e0b;
   --accent-strong: #fbbf24;
   --success: #22c55e;
   --danger: #ef4444;
   --info: #38bdf8;
-  --shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
+  --shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
 }
 
 .theme-dark {
@@ -51,9 +51,7 @@ body {
   max-width: 100%;
   min-height: 100%;
   margin: 0;
-  background:
-    radial-gradient(circle at 50% -12%, rgba(245, 158, 11, 0.14), transparent 36rem),
-    linear-gradient(180deg, #0b0e13 0%, var(--background) 26rem);
+  background: var(--background);
   color: var(--foreground);
   font-family:
     -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
@@ -116,8 +114,8 @@ textarea:focus-visible {
   max-width: 100%;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  background: linear-gradient(180deg, var(--panel-raised), var(--panel));
+  border-radius: 10px;
+  background: var(--panel-raised);
   box-shadow: var(--shadow);
 }
 
@@ -126,7 +124,7 @@ textarea:focus-visible {
   max-width: 100%;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--panel);
 }
 
@@ -150,7 +148,7 @@ textarea:focus-visible {
   max-width: 100%;
   min-height: 3rem;
   border: 1px solid var(--panel-border);
-  border-radius: 10px;
+  border-radius: 6px;
   background: #0d1117;
   padding: 0 0.75rem;
   color: var(--foreground);
@@ -172,4 +170,26 @@ textarea:focus-visible {
 
 .theme-light nav {
   background: rgba(247, 244, 238, 0.94);
+}
+
+.training-row {
+  min-width: 0;
+  border-bottom: 1px solid var(--panel-border);
+  padding: 0.875rem 0;
+}
+
+.training-row:last-child {
+  border-bottom: 0;
+}
+
+.training-choice {
+  display: flex;
+  min-height: 2.75rem;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 0.625rem 0.75rem;
 }
