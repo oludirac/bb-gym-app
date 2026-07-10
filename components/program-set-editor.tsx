@@ -9,6 +9,7 @@ import {
 import type { ProgramSet } from "@/lib/programs/queries";
 
 type ProgramSetEditorProps = {
+  displayOrder: number;
   exerciseCategory: string;
   programId: string;
   set: ProgramSet;
@@ -41,6 +42,7 @@ function formatNumber(value: number | null) {
 }
 
 export function ProgramSetEditor({
+  displayOrder,
   exerciseCategory,
   onDelete,
   onUpdate,
@@ -108,7 +110,7 @@ export function ProgramSetEditor({
   return (
     <div className="rounded-xl border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-black">Set {set.sort_order}</p>
+        <p className="text-sm font-black">Set {displayOrder}</p>
         <button
           type="button"
           onClick={save}

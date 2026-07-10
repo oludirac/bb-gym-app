@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
@@ -343,8 +342,8 @@ export function ActiveWorkoutConsole({
   activeWorkout,
   defaultRestSeconds
 }: ActiveWorkoutConsoleProps) {
-  const router = useRouter();
   const [workout, setWorkout] = useState(activeWorkout);
+  const [workoutError, setWorkoutError] = useState<string | null>(null);
   const [focus, setFocus] = useState(() => firstIncomplete(activeWorkout));
   const [draftState, setDraftState] = useState<{
     draft: Draft;
@@ -390,6 +389,10 @@ export function ActiveWorkoutConsole({
 
   const currentExercise = focused?.exercise ?? null;
   const currentSet = focused?.set ?? null;
+  const currentSetNumber =
+    currentExercise && currentSet
+      ? currentExercise.sets.findIndex((set) => set.id === currentSet.id) + 1
+      : 0;
   const isCardio = currentExercise?.exercise_category === "cardio";
   const previousSet = currentExercise
     ? previousSetFor(currentExercise, currentSet)
@@ -470,6 +473,7 @@ export function ActiveWorkoutConsole({
       return;
     }
 
+    setWorkoutError(null);
     const restSeconds = currentSet.rest_seconds ?? defaultRestSeconds;
     const completedAt = new Date().toISOString();
     const patch: Partial<WorkoutSet> = isCardio
@@ -517,12 +521,13 @@ export function ActiveWorkoutConsole({
       }
     }
 
+    const previousWorkout = workout;
     setWorkout(optimistic);
     setFocus(next);
     setSavingSetId(currentSet.id);
     startRest(restSeconds);
 
-    await completeWorkoutSetInline({
+    const result = await completeWorkoutSetInline({
       distanceKm: draft.distanceKm,
       durationMinutes: draft.durationMinutes,
       intensity: draft.intensity,
@@ -533,22 +538,42 @@ export function ActiveWorkoutConsole({
     });
 
     setSavingSetId(null);
-    router.refresh();
+
+    if (!result.ok || !result.set) {
+      setWorkout(previousWorkout);
+      setFocus({ exerciseId: currentExercise.id, setId: currentSet.id });
+      setWorkoutError(result.error ?? "Could not save set.");
+      return;
+    }
+
+    setWorkout((current) => updateSet(current, result.set.id, result.set));
   };
 
   const undoSet = async (exerciseId: string, setId: string) => {
+    setWorkoutError(null);
+    const previousWorkout = workout;
     setWorkout(updateSet(workout, setId, { completed_at: null }));
     setFocus({ exerciseId, setId });
     setSavingSetId(setId);
-    await undoWorkoutSetInline(setId);
+    const result = await undoWorkoutSetInline(setId);
     setSavingSetId(null);
-    router.refresh();
+
+    if (!result.ok || !result.set) {
+      setWorkout(previousWorkout);
+      setWorkoutError(result.error ?? "Could not undo set.");
+      return;
+    }
+
+    setWorkout((current) => updateSet(current, result.set.id, result.set));
   };
 
   const moveExercise = (
     workoutExerciseId: string,
     direction: "down" | "later" | "up"
   ) => {
+    const previousWorkout = workout;
+    setWorkoutError(null);
+
     setWorkout((current) => {
       const exercises = [...current.workoutExercises];
       const currentIndex = exercises.findIndex(
@@ -585,8 +610,12 @@ export function ActiveWorkoutConsole({
     });
 
     startReorderTransition(async () => {
-      await moveWorkoutExerciseInline({ direction, workoutExerciseId });
-      router.refresh();
+      const result = await moveWorkoutExerciseInline({ direction, workoutExerciseId });
+
+      if (!result.ok) {
+        setWorkout(previousWorkout);
+        setWorkoutError("Could not move lift.");
+      }
     });
   };
 
@@ -595,11 +624,19 @@ export function ActiveWorkoutConsole({
       return;
     }
 
-    await saveWorkoutSetWeightAsPlanWeight({
+    const result = await saveWorkoutSetWeightAsPlanWeight({
       programSetId: currentSet.program_set_id,
       weightKg: draft.weightKg
     });
-    router.refresh();
+
+    if (!result.ok) {
+      setWorkoutError("Could not save plan weight.");
+      return;
+    }
+
+    setWorkout((current) =>
+      updateSet(current, currentSet.id, { target_weight_kg: result.weightKg })
+    );
   };
 
   const addSetToExercise = async (
@@ -627,12 +664,11 @@ export function ActiveWorkoutConsole({
         )
       }));
       setFocus({ exerciseId: workoutExerciseId, setId: result.set.id });
+    } else {
+      setWorkoutError(result.error ?? "Could not add set.");
     }
 
     setPendingSetMutationId(null);
-    startReorderTransition(() => {
-      router.refresh();
-    });
   };
 
   const readyToFinish = allSets > 0 && doneSets >= allSets;
@@ -656,6 +692,12 @@ export function ActiveWorkoutConsole({
         </p>
       </header>
 
+      {workoutError ? (
+        <p className="rounded-md border border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10 p-3 text-sm font-bold text-red-200">
+          {workoutError}
+        </p>
+      ) : null}
+
       {currentExercise && currentSet ? (
         <section className="overflow-hidden border-y border-[color:var(--panel-border)]">
           <div className="border-b border-[color:var(--panel-border)] py-4">
@@ -668,16 +710,16 @@ export function ActiveWorkoutConsole({
                   {currentExercise.exercise_name_snapshot}
                 </h2>
                 <p className="mt-1 text-sm font-bold text-[color:var(--muted)]">
-                  Set {currentSet.sort_order} of {currentExercise.sets.length}
+                  Set {currentSetNumber} of {currentExercise.sets.length}
                 </p>
               </div>
               <div className="grid size-11 shrink-0 place-items-center rounded-md bg-[color:var(--accent)] text-lg font-black text-zinc-950">
-                {currentSet.sort_order}
+                {currentSetNumber}
               </div>
             </div>
 
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-              {currentExercise.sets.map((set) => (
+              {currentExercise.sets.map((set, index) => (
                 <button
                   type="button"
                   key={set.id}
@@ -693,8 +735,8 @@ export function ActiveWorkoutConsole({
                   }`}
                 >
                   {set.completed_at
-                    ? `${set.sort_order}: ${loggedLabel(set, isCardio)}`
-                    : `${set.sort_order}: ${targetLabel(set, isCardio)}`}
+                    ? `${index + 1}: ${loggedLabel(set, isCardio)}`
+                    : `${index + 1}: ${targetLabel(set, isCardio)}`}
                 </button>
               ))}
             </div>
@@ -1069,7 +1111,7 @@ export function ActiveWorkoutConsole({
 
               {!isComplete || isExpanded ? (
                 <div className="space-y-2 border-t border-[color:var(--panel-border)] p-3">
-                  {exercise.sets.map((set) => (
+                  {exercise.sets.map((set, index) => (
                     <button
                       type="button"
                       key={set.id}
@@ -1085,7 +1127,7 @@ export function ActiveWorkoutConsole({
                             : "bg-[color:var(--panel)]"
                         }`}
                       >
-                        {set.sort_order}
+                        {index + 1}
                       </span>
                       <span className="min-w-0 truncate text-sm font-bold">
                         {set.completed_at

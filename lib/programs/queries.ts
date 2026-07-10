@@ -79,6 +79,32 @@ export type ProgramDetail = {
   weeks: ProgramWeek[];
 };
 
+export type ProgramEditDaySummary = {
+  day_number: number;
+  exercise_count: number;
+  focus: string | null;
+  id: string;
+  name: string;
+  notes: string | null;
+  schedule_weekdays: number[];
+  week_number: number;
+};
+
+export type ProgramEditShell = {
+  avg_session_minutes: number | null;
+  categories: string[];
+  days: ProgramEditDaySummary[];
+  days_per_week: number | null;
+  description: string | null;
+  difficulty: string | null;
+  equipment_required: string[];
+  id: string;
+  is_public: boolean;
+  name: string;
+  owner_id: string | null;
+  schedule_type: ProgramScheduleType;
+};
+
 export type ProgramSummary = {
   avg_session_minutes: number | null;
   categories: string[];
@@ -208,6 +234,17 @@ type RawProgramDay = {
   program_exercises?: RawProgramExercise[] | null;
 };
 
+type RawProgramDayShell = Omit<RawProgramDay, "program_exercises"> & {
+  program_exercises?: { id: string }[] | null;
+};
+
+type RawProgramWeekShell = {
+  id: string;
+  notes: string | null;
+  program_days?: RawProgramDayShell[] | null;
+  week_number: number;
+};
+
 type RawProgramWeek = {
   id: string;
   notes: string | null;
@@ -229,6 +266,10 @@ type RawProgram = {
   program_day_schedules?: RawProgramDaySchedule[] | null;
   program_weeks?: RawProgramWeek[] | null;
   schedule_type: ProgramScheduleType | null;
+};
+
+type RawProgramShell = Omit<RawProgram, "program_weeks"> & {
+  program_weeks?: RawProgramWeekShell[] | null;
 };
 
 const programDetailSelect = `
@@ -298,6 +339,48 @@ const programDetailSelect = `
   )
 `;
 
+const programDayEditorSelect = `
+  id,
+  day_number,
+  name,
+  focus,
+  notes,
+  program_exercises (
+    id,
+    exercise_id,
+    sort_order,
+    notes,
+    progression_style,
+    weight_increment_kg,
+    track_as_main_lift,
+    exercises (
+      category,
+      name
+    ),
+    program_sets (
+      id,
+      sort_order,
+      set_type,
+      target_duration_seconds,
+      target_distance_km,
+      target_intensity,
+      progression_track_id,
+      progression_tracks (
+        id,
+        name,
+        current_weight_kg
+      ),
+      target_reps_min,
+      target_reps_max,
+      target_weight_kg,
+      target_rpe,
+      target_rir,
+      rest_seconds,
+      notes
+    )
+  )
+`;
+
 function sortByOrder<T extends Record<TKey, number>, TKey extends keyof T>(
   items: T[],
   key: TKey
@@ -346,15 +429,58 @@ function mapProgramSet(set: RawProgramSet): ProgramSet {
   };
 }
 
-function mapProgram(raw: RawProgram): ProgramDetail {
+function buildScheduleMap(schedules: RawProgramDaySchedule[] | null | undefined) {
   const scheduleMap = new Map<string, number[]>();
 
-  for (const schedule of raw.program_day_schedules ?? []) {
+  for (const schedule of schedules ?? []) {
     scheduleMap.set(schedule.program_day_id, [
       ...(scheduleMap.get(schedule.program_day_id) ?? []),
       schedule.weekday
     ]);
   }
+
+  return scheduleMap;
+}
+
+function mapProgramExercise(exercise: RawProgramExercise): ProgramExercise {
+  return {
+    exercise_category: firstExerciseCategory(exercise.exercises),
+    exercise_id: exercise.exercise_id,
+    exercise_name: firstExerciseName(exercise.exercises),
+    id: exercise.id,
+    notes: exercise.notes,
+    progression_style: exercise.progression_style ?? "double_progression",
+    sets: sortByOrder(exercise.program_sets ?? [], "sort_order").map(
+      mapProgramSet
+    ),
+    sort_order: exercise.sort_order,
+    track_as_main_lift: exercise.track_as_main_lift ?? false,
+    weight_increment_kg:
+      exercise.weight_increment_kg === null
+        ? 2.5
+        : Number(exercise.weight_increment_kg)
+  };
+}
+
+function mapProgramDay(
+  day: RawProgramDay,
+  scheduleMap: Map<string, number[]>
+): ProgramDay {
+  return {
+    day_number: day.day_number,
+    exercises: sortByOrder(day.program_exercises ?? [], "sort_order").map(
+      mapProgramExercise
+    ),
+    focus: day.focus,
+    id: day.id,
+    name: day.name,
+    notes: day.notes,
+    schedule_weekdays: (scheduleMap.get(day.id) ?? []).sort((a, b) => a - b)
+  };
+}
+
+function mapProgram(raw: RawProgram): ProgramDetail {
+  const scheduleMap = buildScheduleMap(raw.program_day_schedules);
 
   return {
     avg_session_minutes: raw.avg_session_minutes,
@@ -369,37 +495,9 @@ function mapProgram(raw: RawProgram): ProgramDetail {
     owner_id: raw.owner_id,
     schedule_type: raw.schedule_type ?? "sequence",
     weeks: sortByOrder(raw.program_weeks ?? [], "week_number").map((week) => ({
-      days: sortByOrder(week.program_days ?? [], "day_number").map((day) => ({
-        day_number: day.day_number,
-        exercises: sortByOrder(
-          day.program_exercises ?? [],
-          "sort_order"
-        ).map((exercise) => ({
-          exercise_category: firstExerciseCategory(exercise.exercises),
-          exercise_id: exercise.exercise_id,
-          exercise_name: firstExerciseName(exercise.exercises),
-          id: exercise.id,
-          notes: exercise.notes,
-          progression_style:
-            exercise.progression_style ?? "double_progression",
-          sets: sortByOrder(exercise.program_sets ?? [], "sort_order").map(
-            mapProgramSet
-          ),
-          sort_order: exercise.sort_order,
-          track_as_main_lift: exercise.track_as_main_lift ?? false,
-          weight_increment_kg:
-            exercise.weight_increment_kg === null
-              ? 2.5
-              : Number(exercise.weight_increment_kg)
-        })),
-        focus: day.focus,
-        id: day.id,
-        name: day.name,
-        notes: day.notes,
-        schedule_weekdays: (scheduleMap.get(day.id) ?? []).sort(
-          (a, b) => a - b
-        )
-      })),
+      days: sortByOrder(week.program_days ?? [], "day_number").map((day) =>
+        mapProgramDay(day, scheduleMap)
+      ),
       id: week.id,
       notes: week.notes,
       week_number: week.week_number
@@ -488,6 +586,117 @@ export async function getProgramDetail(
   return data ? mapProgram(data as RawProgram) : null;
 }
 
+export async function getProgramEditShell(
+  supabase: SupabaseClient,
+  programId: string
+) {
+  const { data, error } = await supabase
+    .from("programs")
+    .select(
+      `
+        id,
+        owner_id,
+        is_public,
+        name,
+        description,
+        difficulty,
+        days_per_week,
+        avg_session_minutes,
+        equipment_required,
+        schedule_type,
+        program_categories (
+          category
+        ),
+        program_day_schedules (
+          id,
+          program_day_id,
+          weekday
+        ),
+        program_weeks (
+          id,
+          week_number,
+          notes,
+          program_days (
+            id,
+            day_number,
+            name,
+            focus,
+            notes,
+            program_exercises (
+              id
+            )
+          )
+        )
+      `
+    )
+    .eq("id", programId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const raw = data as RawProgramShell;
+  const scheduleMap = buildScheduleMap(raw.program_day_schedules);
+
+  return {
+    avg_session_minutes: raw.avg_session_minutes,
+    categories: (raw.program_categories ?? []).map((item) => item.category),
+    days: sortByOrder(raw.program_weeks ?? [], "week_number").flatMap((week) =>
+      sortByOrder(week.program_days ?? [], "day_number").map((day) => ({
+        day_number: day.day_number,
+        exercise_count: day.program_exercises?.length ?? 0,
+        focus: day.focus,
+        id: day.id,
+        name: day.name,
+        notes: day.notes,
+        schedule_weekdays: (scheduleMap.get(day.id) ?? []).sort(
+          (a, b) => a - b
+        ),
+        week_number: week.week_number
+      }))
+    ),
+    days_per_week: raw.days_per_week,
+    description: raw.description,
+    difficulty: raw.difficulty,
+    equipment_required: raw.equipment_required ?? [],
+    id: raw.id,
+    is_public: raw.is_public,
+    name: raw.name,
+    owner_id: raw.owner_id,
+    schedule_type: raw.schedule_type ?? "sequence"
+  } satisfies ProgramEditShell;
+}
+
+export async function getProgramDayEditor(
+  supabase: SupabaseClient,
+  dayId: string,
+  scheduleWeekdays: number[] = []
+) {
+  const { data, error } = await supabase
+    .from("program_days")
+    .select(programDayEditorSelect)
+    .eq("id", dayId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return mapProgramDay(
+    data as RawProgramDay,
+    new Map([[dayId, [...scheduleWeekdays].sort((a, b) => a - b)]])
+  );
+}
+
 export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("program_enrollments")
@@ -528,7 +737,7 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
     : enrollment.programs?.schedule_type;
 
   const [program, completedWorkoutsResult] = await Promise.all([
-    getProgramDetail(supabase, enrollment.program_id),
+    getProgramEditShell(supabase, enrollment.program_id),
     supabase
       .from("workouts")
       .select("id", { count: "exact", head: true })
@@ -536,8 +745,7 @@ export async function getActiveProgramEnrollment(supabase: SupabaseClient) {
       .eq("status", "completed")
   ]);
 
-  const totalDays =
-    program?.weeks.reduce((total, week) => total + week.days.length, 0) ?? 0;
+  const totalDays = program?.days.length ?? 0;
   const completedWorkouts = completedWorkoutsResult.count ?? 0;
 
   return {
@@ -579,15 +787,6 @@ function previousDateForWeekday(targetWeekday: number, from = new Date()) {
   return new Intl.DateTimeFormat("en-CA").format(previous);
 }
 
-function orderedProgramDays(program: ProgramDetail) {
-  return program.weeks.flatMap((week) =>
-    week.days.map((day) => ({
-      day,
-      weekNumber: week.week_number
-    }))
-  );
-}
-
 export async function getTodayPlanOverview(supabase: SupabaseClient) {
   const { data, error } = await supabase
     .from("program_enrollments")
@@ -620,7 +819,7 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
   }
 
   const enrollment = data as RawActiveProgramEnrollment;
-  const program = await getProgramDetail(supabase, enrollment.program_id);
+  const program = await getProgramEditShell(supabase, enrollment.program_id);
 
   if (!program) {
     return null;
@@ -629,7 +828,10 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
   const today = new Date();
   const todayIso = todayIsoDate();
   const todayWeekday = weekdayNumber(today);
-  const orderedDays = orderedProgramDays(program);
+  const orderedDays = program.days.map((day) => ({
+    day,
+    weekNumber: day.week_number
+  }));
   const completedTodayResult = await supabase
     .from("workouts")
     .select("id", { count: "exact", head: true })
@@ -656,7 +858,7 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
         (
           item
         ): item is {
-          day: ProgramDay;
+          day: ProgramEditDaySummary;
           scheduled_for: string;
           weekday: number;
           weekNumber: number;
@@ -664,7 +866,11 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
       )
       .filter((item) => item.scheduled_for >= enrollment.started_on)
       .sort((a, b) => b.scheduled_for.localeCompare(a.scheduled_for));
-    let missed: TodayPlanOverview["missed"] = null;
+    let missed: {
+      day: ProgramEditDaySummary;
+      scheduled_for: string;
+      week_number: number;
+    } | null = null;
     let completedMissedKeys = new Set<string>();
     let dismissedMissedKeys = new Set<string>();
 
@@ -719,11 +925,35 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
       }
     }
 
+    const [todayProgramDay, missedProgramDay] = await Promise.all([
+      todayMatch
+        ? getProgramDayEditor(
+            supabase,
+            todayMatch.day.id,
+            todayMatch.day.schedule_weekdays
+          )
+        : Promise.resolve(null),
+      missed
+        ? getProgramDayEditor(
+            supabase,
+            missed.day.id,
+            missed.day.schedule_weekdays
+          )
+        : Promise.resolve(null)
+    ]);
+
     return {
       completed_today: completedToday,
       enrollment_id: enrollment.id,
-      missed,
-      program_day: todayMatch?.day ?? null,
+      missed:
+        missed && missedProgramDay
+          ? {
+              day: missedProgramDay,
+              scheduled_for: missed.scheduled_for,
+              week_number: missed.week_number
+            }
+          : null,
+      program_day: todayProgramDay,
       program_id: program.id,
       program_name: program.name,
       scheduled_for: todayIso,
@@ -745,12 +975,19 @@ export async function getTodayPlanOverview(supabase: SupabaseClient) {
         weekNumber === enrollment.current_week &&
         day.day_number === enrollment.current_day
     ) ?? orderedDays[0] ?? null;
+  const currentProgramDay = current
+    ? await getProgramDayEditor(
+        supabase,
+        current.day.id,
+        current.day.schedule_weekdays
+      )
+    : null;
 
   return {
     completed_today: completedToday,
     enrollment_id: enrollment.id,
     missed: null,
-    program_day: current?.day ?? null,
+    program_day: currentProgramDay,
     program_id: program.id,
     program_name: program.name,
     scheduled_for: todayIso,

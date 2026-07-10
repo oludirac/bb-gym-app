@@ -182,7 +182,7 @@ async function nextSortOrder(
     .limit(1)
     .maybeSingle();
 
-  return ((data as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
+  return ((data as { sort_order?: number } | null)?.sort_order ?? 0) + 1000;
 }
 
 async function nextDayNumber(
@@ -232,42 +232,6 @@ async function normalizeProgramWeekDayNumbers(
         .from("program_days")
         .update({ day_number: index + 1 })
         .eq("id", day.id)
-    )
-  );
-}
-
-async function normalizeProgramExerciseSortOrders(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  programDayId: string
-) {
-  const { data } = await supabase
-    .from("program_exercises")
-    .select("id, sort_order")
-    .eq("program_day_id", programDayId)
-    .order("sort_order", { ascending: true });
-  const exercises = data ?? [];
-
-  if (exercises.length === 0) {
-    return;
-  }
-
-  const offset = exercises.length + 1000;
-
-  await Promise.all(
-    exercises.map((exercise, index) =>
-      supabase
-        .from("program_exercises")
-        .update({ sort_order: offset + index + 1 })
-        .eq("id", exercise.id)
-    )
-  );
-
-  await Promise.all(
-    exercises.map((exercise, index) =>
-      supabase
-        .from("program_exercises")
-        .update({ sort_order: index + 1 })
-        .eq("id", exercise.id)
     )
   );
 }
@@ -468,7 +432,7 @@ export async function updateProgramDay(formData: FormData) {
     .eq("id", programDayId);
 
   revalidatePath(`/programs/${programId}/edit`);
-  redirect(`/programs/${programId}/edit`);
+  redirect(`/programs/${programId}/edit?day=${programDayId}`);
 }
 
 export async function addProgramDay(formData: FormData) {
@@ -488,16 +452,22 @@ export async function addProgramDay(formData: FormData) {
 
   const dayNumber = await nextDayNumber(supabase, weekId);
 
-  await supabase.from("program_days").insert({
-    day_number: dayNumber,
-    name,
-    program_week_id: weekId
-  });
+  const { data: programDay } = await supabase
+    .from("program_days")
+    .insert({
+      day_number: dayNumber,
+      name,
+      program_week_id: weekId
+    })
+    .select("id")
+    .single();
 
   await normalizeProgramWeekDayNumbers(supabase, weekId);
 
   revalidatePath(`/programs/${programId}/edit`);
-  redirect(`/programs/${programId}/edit`);
+  redirect(
+    `/programs/${programId}/edit${programDay?.id ? `?day=${programDay.id}` : ""}`
+  );
 }
 
 export async function deleteProgramDay(formData: FormData) {
@@ -534,7 +504,7 @@ export async function moveProgramDay(formData: FormData) {
   }
 
   await moveProgramDayById(supabase, programId, programDayId, direction);
-  redirect(`/programs/${programId}/edit`);
+  redirect(`/programs/${programId}/edit?day=${programDayId}`);
 }
 
 async function moveProgramDayById(
@@ -734,22 +704,42 @@ export async function addProgramExercise(formData: FormData) {
       );
     } else {
       const setsWithTracks = [];
+      const trackByGroup = new Map<
+        string,
+        Awaited<ReturnType<typeof findOrCreateProgressionTrack>>
+      >();
 
       for (const set of weightedSets) {
-        const track = await findOrCreateProgressionTrack(supabase, {
-          currentWeightKg: set.target_weight_kg ?? null,
-          exerciseId,
-          exerciseName,
-          ownerId: user.id,
-          programId,
-          progressionStyle,
-          repsMax: set.target_reps_max ?? null,
-          repsMin: set.target_reps_min ?? null,
-          separateKey: separateProgressionTrack
+        const separateKey = separateProgressionTrack
             ? `${programExercise.id}:${set.target_reps_min ?? "null"}:${set.target_reps_max ?? "null"}`
-            : null,
-          weightIncrementKg
-        });
+            : null;
+        const trackGroupKey = [
+          separateKey ?? "shared",
+          exerciseId,
+          progressionStyle,
+          set.target_reps_min ?? "null",
+          set.target_reps_max ?? "null"
+        ].join(":");
+
+        if (!trackByGroup.has(trackGroupKey)) {
+          trackByGroup.set(
+            trackGroupKey,
+            await findOrCreateProgressionTrack(supabase, {
+              currentWeightKg: set.target_weight_kg ?? null,
+              exerciseId,
+              exerciseName,
+              ownerId: user.id,
+              programId,
+              progressionStyle,
+              repsMax: set.target_reps_max ?? null,
+              repsMin: set.target_reps_min ?? null,
+              separateKey,
+              weightIncrementKg
+            })
+          );
+        }
+
+        const track = trackByGroup.get(trackGroupKey) ?? null;
 
         setsWithTracks.push({
           ...set,
@@ -762,16 +752,15 @@ export async function addProgramExercise(formData: FormData) {
     }
   }
 
-  await normalizeProgramExerciseSortOrders(supabase, programDayId);
-
   revalidatePath(`/programs/${programId}/edit`);
-  redirect(`/programs/${programId}/edit`);
+  redirect(`/programs/${programId}/edit?day=${programDayId}`);
 }
 
 export async function deleteProgramExercise(formData: FormData) {
   const { supabase } = await requireUser();
   const programId = fieldValue(formData, "programId");
   const programExerciseId = fieldValue(formData, "programExerciseId");
+  let returnDayId: string | null = null;
 
   if (programExerciseId) {
     const { data: programExercise } = await supabase
@@ -779,22 +768,20 @@ export async function deleteProgramExercise(formData: FormData) {
       .select("program_day_id")
       .eq("id", programExerciseId)
       .maybeSingle();
+    returnDayId = programExercise?.program_day_id ?? null;
 
     await supabase
       .from("program_exercises")
       .delete()
       .eq("id", programExerciseId);
-
-    if (programExercise?.program_day_id) {
-      await normalizeProgramExerciseSortOrders(
-        supabase,
-        programExercise.program_day_id
-      );
-    }
   }
 
   revalidatePath(`/programs/${programId}/edit`);
-  redirect(programId ? `/programs/${programId}/edit` : "/programs");
+  redirect(
+    programId
+      ? `/programs/${programId}/edit${returnDayId ? `?day=${returnDayId}` : ""}`
+      : "/programs"
+  );
 }
 
 export async function updateProgramExerciseSettings(formData: FormData) {
@@ -833,13 +820,13 @@ export async function moveProgramExercise(formData: FormData) {
     redirect(programId ? `/programs/${programId}/edit` : "/programs");
   }
 
-  await moveProgramExerciseById(
+  const returnDayId = await moveProgramExerciseById(
     supabase,
     programId,
     programExerciseId,
     direction
   );
-  redirect(`/programs/${programId}/edit`);
+  redirect(`/programs/${programId}/edit${returnDayId ? `?day=${returnDayId}` : ""}`);
 }
 
 async function moveProgramExerciseById(
@@ -848,30 +835,22 @@ async function moveProgramExerciseById(
   programExerciseId: string,
   direction: MoveDirection
 ) {
-  const program = await getProgramDetail(supabase, programId);
-
-  if (!program || program.is_public) {
-    return;
-  }
-
-  const exercises = program.weeks
-    .flatMap((week) => week.days)
-    .flatMap((day) =>
-      day.exercises.map((exercise) => ({
-        ...exercise,
-        dayId: day.id
-      }))
-    );
-  const current = exercises.find(
-    (exercise) => exercise.id === programExerciseId
-  );
+  const { data: current } = await supabase
+    .from("program_exercises")
+    .select("id, program_day_id, sort_order")
+    .eq("id", programExerciseId)
+    .maybeSingle();
 
   if (!current) {
-    return;
+    return null;
   }
 
-  const dayExercises = exercises
-    .filter((exercise) => exercise.dayId === current.dayId)
+  const { data } = await supabase
+    .from("program_exercises")
+    .select("id, sort_order")
+    .eq("program_day_id", current.program_day_id)
+    .order("sort_order", { ascending: true });
+  const dayExercises = (data ?? [])
     .sort((a, b) => a.sort_order - b.sort_order);
   const currentIndex = dayExercises.findIndex(
     (exercise) => exercise.id === programExerciseId
@@ -880,34 +859,26 @@ async function moveProgramExerciseById(
   const target = dayExercises[targetIndex];
 
   if (!target) {
-    return;
+    return current.program_day_id as string;
   }
 
-  const temporarySortOrder =
-    Math.max(...dayExercises.map((exercise) => exercise.sort_order)) + 1000;
-
-  await supabase
-    .from("program_exercises")
-    .update({ sort_order: temporarySortOrder })
-    .eq("id", current.id);
-
-  await supabase
-    .from("program_exercises")
-    .update({ sort_order: current.sort_order })
-    .eq("id", target.id);
-
-  await supabase
-    .from("program_exercises")
-    .update({ sort_order: target.sort_order })
-    .eq("id", current.id);
-
-  await normalizeProgramExerciseSortOrders(supabase, current.dayId);
+  await Promise.all([
+    supabase
+      .from("program_exercises")
+      .update({ sort_order: target.sort_order })
+      .eq("id", current.id),
+    supabase
+      .from("program_exercises")
+      .update({ sort_order: current.sort_order })
+      .eq("id", target.id)
+  ]);
 
   revalidatePath("/dashboard");
   revalidatePath("/programs");
   revalidatePath(`/programs/${programId}`);
   revalidatePath(`/programs/${programId}/edit`);
   revalidatePath("/programs/active");
+  return current.program_day_id as string;
 }
 
 export async function moveProgramExerciseInline(input: {

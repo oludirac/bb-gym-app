@@ -14,6 +14,7 @@ import { groupedSetSummaries } from "@/lib/programs/set-summary";
 import type { ProgramExercise } from "@/lib/programs/queries";
 
 type ProgramExerciseCardProps = {
+  displayOrder: number;
   exercise: ProgramExercise;
   isFirst: boolean;
   isLast: boolean;
@@ -35,6 +36,7 @@ function formatProgressionStyle(value: string) {
 }
 
 export function ProgramExerciseCard({
+  displayOrder,
   exercise,
   isFirst,
   isLast,
@@ -75,7 +77,7 @@ export function ProgramExerciseCard({
       <div className="flex items-start justify-between gap-3 border-b border-[color:var(--panel-border)] p-3">
         <div className="min-w-0">
           <h4 className="truncate text-base font-black">
-            {exercise.sort_order}. {exercise.exercise_name}
+            {displayOrder}. {exercise.exercise_name}
           </h4>
           <p className="mt-1 text-xs font-black capitalize text-[color:var(--accent)]">
             {formatProgressionStyle(exercise.progression_style)} | +
@@ -186,9 +188,10 @@ export function ProgramExerciseCard({
             </FormSubmitButton>
           </form>
 
-          {sets.map((set) => (
+          {sets.map((set, index) => (
             <ProgramSetEditor
               key={set.id}
+              displayOrder={index + 1}
               exerciseCategory={exercise.exercise_category}
               onDelete={(setId) =>
                 setSets((current) =>

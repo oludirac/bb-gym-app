@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getProgramDetail, type ProgramExercise } from "@/lib/programs/queries";
 
 export type MainLiftProgress = {
   change_kg: number | null;
@@ -45,6 +44,14 @@ type RawEnrollment = {
   block_length_weeks: number | null;
   id: string;
   program_id: string;
+  programs:
+    | {
+        name: string;
+      }
+    | {
+        name: string;
+      }[]
+    | null;
   started_on: string;
 };
 
@@ -59,6 +66,7 @@ type RawWorkoutExercise = {
   program_exercise_id: string | null;
   workout_sets?: {
     completed_at: string | null;
+    program_set_id: string | null;
     reps: number | null;
     weight_kg: number | null;
   }[] | null;
@@ -68,6 +76,29 @@ type RawWorkoutExercise = {
       }
     | {
         started_at: string;
+      }[]
+    | null;
+};
+
+type RawProgressionTrack = {
+  current_weight_kg: number | null;
+  exercise_id: string;
+  id: string;
+  name: string;
+  reps_max: number | null;
+  reps_min: number | null;
+};
+
+type RawProgramSetTrackLink = {
+  id: string;
+  program_exercise_id: string | null;
+  progression_track_id: string | null;
+  program_exercises:
+    | {
+        track_as_main_lift: boolean | null;
+      }
+    | {
+        track_as_main_lift: boolean | null;
       }[]
     | null;
 };
@@ -105,6 +136,14 @@ function firstWorkout(raw: RawWorkoutExercise["workouts"]) {
   return Array.isArray(raw) ? raw[0] ?? null : raw;
 }
 
+function firstProgramExercise(raw: RawProgramSetTrackLink["program_exercises"]) {
+  return Array.isArray(raw) ? raw[0] ?? null : raw;
+}
+
+function firstProgramName(raw: RawEnrollment["programs"]) {
+  return Array.isArray(raw) ? raw[0]?.name : raw?.name;
+}
+
 function weekNumberFor(startedOn: string, date = new Date()) {
   const start = startOfDay(new Date(`${startedOn}T00:00:00`));
   const diffMs = startOfDay(date).getTime() - start.getTime();
@@ -113,89 +152,6 @@ function weekNumberFor(startedOn: string, date = new Date()) {
 
 function workoutWeek(startedOn: string, value: string) {
   return weekNumberFor(startedOn, new Date(value));
-}
-
-function exerciseProgressionKey(exercise: ProgramExercise) {
-  const trackedSet = exercise.sets.find((set) => set.progression_track_id);
-
-  if (trackedSet?.progression_track_id) {
-    return `track:${trackedSet.progression_track_id}`;
-  }
-
-  return `exercise:${exercise.exercise_id}:${formatRepRange(exercise)}`;
-}
-
-function mainLiftCandidates(programExercises: ProgramExercise[]) {
-  const tracked = programExercises.filter((exercise) => exercise.track_as_main_lift);
-  const candidates =
-    tracked.length > 0
-      ? tracked
-      : programExercises.filter((exercise) =>
-          exercise.sets.some((set) => set.target_weight_kg !== null)
-        );
-  const seen = new Set<string>();
-  const uniqueCandidates: ProgramExercise[] = [];
-
-  for (const exercise of candidates) {
-    const key = exerciseProgressionKey(exercise);
-
-    if (seen.has(key)) {
-      continue;
-    }
-
-    seen.add(key);
-    uniqueCandidates.push(exercise);
-  }
-
-  return uniqueCandidates.slice(0, 4);
-}
-
-function formatRepRange(exercise: ProgramExercise) {
-  const firstWeighted = exercise.sets.find(
-    (set) => set.target_reps_min !== null || set.target_reps_max !== null
-  );
-
-  if (!firstWeighted) {
-    return "-";
-  }
-
-  if (
-    firstWeighted.target_reps_min !== null &&
-    firstWeighted.target_reps_max !== null
-  ) {
-    return firstWeighted.target_reps_min === firstWeighted.target_reps_max
-      ? String(firstWeighted.target_reps_min)
-      : `${firstWeighted.target_reps_min}-${firstWeighted.target_reps_max}`;
-  }
-
-  return String(firstWeighted.target_reps_min ?? firstWeighted.target_reps_max);
-}
-
-function currentWeight(exercise: ProgramExercise) {
-  const firstTracked = exercise.sets.find(
-    (set) =>
-      set.progression_track?.current_weight_kg !== null &&
-      set.progression_track?.current_weight_kg !== undefined
-  );
-
-  if (firstTracked?.progression_track?.current_weight_kg !== undefined) {
-    return firstTracked.progression_track.current_weight_kg;
-  }
-
-  const firstWeighted = exercise.sets.find(
-    (set) => set.target_weight_kg !== null
-  );
-  return firstWeighted?.target_weight_kg ?? null;
-}
-
-function progressionTrackId(exercise: ProgramExercise) {
-  return exercise.sets.find((set) => set.progression_track_id)
-    ?.progression_track_id ?? null;
-}
-
-function progressionTrackName(exercise: ProgramExercise) {
-  return exercise.sets.find((set) => set.progression_track?.name)
-    ?.progression_track?.name ?? exercise.exercise_name;
 }
 
 function periodCount(workouts: RawWorkout[], start: Date) {
@@ -226,6 +182,7 @@ function completedSetRows(row: RawWorkoutExercise) {
         estimated_one_rep_max:
           Math.round(estimatedOneRepMax(weightKg, reps) * 10) / 10,
         reps,
+        program_set_id: set.program_set_id,
         started_at: workout.started_at,
         weight_kg: weightKg
       };
@@ -336,6 +293,7 @@ async function getLoggedWorkoutRows(supabase: SupabaseClient) {
           status
         ),
         workout_sets (
+          program_set_id,
           weight_kg,
           reps,
           completed_at
@@ -351,6 +309,177 @@ async function getLoggedWorkoutRows(supabase: SupabaseClient) {
   return (data ?? []) as RawWorkoutExercise[];
 }
 
+function repRangeLabel(min: number | null, max: number | null) {
+  if (min !== null && max !== null) {
+    return min === max ? String(min) : `${min}-${max}`;
+  }
+
+  return String(min ?? max ?? "-");
+}
+
+async function getTrackMainLifts({
+  blockLength,
+  enrollment,
+  supabase,
+  workoutRows
+}: {
+  blockLength: number;
+  enrollment: RawEnrollment;
+  supabase: SupabaseClient;
+  workoutRows: RawWorkoutExercise[];
+}) {
+  const { data: tracksData, error: tracksError } = await supabase
+    .from("progression_tracks")
+    .select("id, name, current_weight_kg, reps_min, reps_max, exercise_id")
+    .eq("program_id", enrollment.program_id)
+    .order("created_at", { ascending: true });
+
+  if (tracksError) {
+    throw new Error(tracksError.message);
+  }
+
+  const tracks = (tracksData ?? []) as RawProgressionTrack[];
+
+  if (tracks.length === 0) {
+    return fallbackMainLiftsFromRows(workoutRows);
+  }
+
+  const trackIds = tracks.map((track) => track.id);
+  const { data: linksData, error: linksError } = await supabase
+    .from("program_sets")
+    .select(
+      "id, progression_track_id, program_exercise_id, program_exercises(track_as_main_lift)"
+    )
+    .in("progression_track_id", trackIds);
+
+  if (linksError) {
+    throw new Error(linksError.message);
+  }
+
+  const linkedSets = (linksData ?? []) as RawProgramSetTrackLink[];
+  const mainTrackIds = new Set<string>();
+  const programExerciseIdsByTrack = new Map<string, Set<string>>();
+  const programSetIdsByTrack = new Map<string, Set<string>>();
+
+  for (const link of linkedSets) {
+    if (!link.progression_track_id) {
+      continue;
+    }
+
+    if (firstProgramExercise(link.program_exercises)?.track_as_main_lift) {
+      mainTrackIds.add(link.progression_track_id);
+    }
+
+    if (link.program_exercise_id) {
+      const programExerciseIds =
+        programExerciseIdsByTrack.get(link.progression_track_id) ?? new Set();
+      programExerciseIds.add(link.program_exercise_id);
+      programExerciseIdsByTrack.set(link.progression_track_id, programExerciseIds);
+    }
+
+    const programSetIds =
+      programSetIdsByTrack.get(link.progression_track_id) ?? new Set();
+    programSetIds.add(link.id);
+    programSetIdsByTrack.set(link.progression_track_id, programSetIds);
+  }
+
+  const candidates = (mainTrackIds.size > 0
+    ? tracks.filter((track) => mainTrackIds.has(track.id))
+    : tracks
+  ).slice(0, 4);
+
+  return candidates.map((track) => {
+    const linkedProgramExerciseIds = programExerciseIdsByTrack.get(track.id);
+    const linkedProgramSetIds = programSetIdsByTrack.get(track.id);
+    const bestByWeek = new Map<number, number>();
+    let firstLoggedAt: string | null = null;
+    let firstLoggedWeight: number | null = null;
+    let lastResult: MainLiftProgress["last_result"] = null;
+
+    for (const row of workoutRows) {
+      const linkedByExercise =
+        linkedProgramExerciseIds && row.program_exercise_id
+          ? linkedProgramExerciseIds.has(row.program_exercise_id)
+          : row.exercise_id === track.exercise_id;
+
+      if (!linkedByExercise) {
+        continue;
+      }
+
+      const workout = firstWorkout(row.workouts);
+
+      if (!workout) {
+        continue;
+      }
+
+      const week = workoutWeek(enrollment.started_on, workout.started_at);
+
+      if (week < 1 || week > blockLength) {
+        continue;
+      }
+
+      const completedSets = completedSetRows(row).filter((set) =>
+        linkedProgramSetIds?.size
+          ? set.program_set_id !== null &&
+            linkedProgramSetIds.has(set.program_set_id)
+          : true
+      );
+
+      for (const set of completedSets) {
+        const estimate = set.estimated_one_rep_max;
+        const existing = bestByWeek.get(week) ?? null;
+
+        if (existing === null || estimate > existing) {
+          bestByWeek.set(week, estimate);
+        }
+
+        if (
+          !firstLoggedAt ||
+          new Date(set.achieved_at) < new Date(firstLoggedAt)
+        ) {
+          firstLoggedAt = set.achieved_at;
+          firstLoggedWeight = set.weight_kg;
+        }
+
+        if (
+          !lastResult ||
+          new Date(set.achieved_at) > new Date(lastResult.achieved_at)
+        ) {
+          lastResult = {
+            achieved_at: set.achieved_at,
+            reps: set.reps,
+            weight_kg: set.weight_kg
+          };
+        }
+      }
+    }
+
+    const currentWeightKg =
+      track.current_weight_kg === null ? null : Number(track.current_weight_kg);
+
+    return {
+      change_kg:
+        currentWeightKg !== null && firstLoggedWeight !== null
+          ? Math.round((currentWeightKg - firstLoggedWeight) * 100) / 100
+          : null,
+      current_weight_kg: currentWeightKg,
+      exercise_id: track.exercise_id,
+      exercise_name: track.name,
+      last_result: lastResult,
+      program_exercise_id: track.id,
+      rep_range: repRangeLabel(track.reps_min, track.reps_max),
+      trend: Array.from({ length: blockLength }, (_, index) => {
+        const week = index + 1;
+        return {
+          label: `W${week}`,
+          value: bestByWeek.get(week) ?? null,
+          week
+        };
+      })
+    } satisfies MainLiftProgress;
+  });
+}
+
 export async function getProgressSummary(supabase: SupabaseClient) {
   const now = new Date();
   const weekStart = startOfWeek(now);
@@ -359,7 +488,7 @@ export async function getProgressSummary(supabase: SupabaseClient) {
 
   const { data: enrollmentData, error: enrollmentError } = await supabase
     .from("program_enrollments")
-    .select("id, program_id, started_on, block_length_weeks")
+    .select("id, program_id, started_on, block_length_weeks, programs(name)")
     .eq("status", "active")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -414,7 +543,6 @@ export async function getProgressSummary(supabase: SupabaseClient) {
     } satisfies ProgressSummary;
   }
 
-  const program = await getProgramDetail(supabase, enrollment.program_id);
   const blockLength = enrollment.block_length_weeks ?? 12;
   const activeWeek = Math.min(blockLength, weekNumberFor(enrollment.started_on));
   const blockWorkouts = workouts.filter((workout) => {
@@ -425,19 +553,6 @@ export async function getProgressSummary(supabase: SupabaseClient) {
     (workout) => workoutWeek(enrollment.started_on, workout.started_at) === activeWeek
   );
 
-  if (!program) {
-    return {
-      active_block: null,
-      bodyweight: [],
-      main_lifts: [],
-      periods
-    } satisfies ProgressSummary;
-  }
-
-  const programExercises = program.weeks
-    .flatMap((week) => week.days)
-    .flatMap((day) => day.exercises);
-  const mainExercises = mainLiftCandidates(programExercises);
   const { data: rows, error: rowsError } = await supabase
     .from("workout_exercises")
     .select(
@@ -451,6 +566,7 @@ export async function getProgressSummary(supabase: SupabaseClient) {
           status
         ),
         workout_sets (
+          program_set_id,
           weight_kg,
           reps,
           completed_at
@@ -465,101 +581,17 @@ export async function getProgressSummary(supabase: SupabaseClient) {
   }
 
   const workoutRows = (rows ?? []) as RawWorkoutExercise[];
-  const mainLifts = mainExercises.length > 0 ? mainExercises.map((exercise) => {
-    const trackId = progressionTrackId(exercise);
-    const linkedProgramExerciseIds = trackId
-      ? new Set(
-          programExercises
-            .filter((candidate) =>
-              candidate.sets.some(
-                (set) => set.progression_track_id === trackId
-              )
-            )
-            .map((candidate) => candidate.id)
-        )
-      : null;
-    const liftRows = workoutRows.filter((row) =>
-      linkedProgramExerciseIds
-        ? row.program_exercise_id !== null &&
-          linkedProgramExerciseIds.has(row.program_exercise_id)
-        : row.program_exercise_id === exercise.id ||
-          row.exercise_id === exercise.exercise_id
-    );
-    const bestByWeek = new Map<number, number>();
-    let firstLoggedAt: string | null = null;
-    let firstLoggedWeight: number | null = null;
-    let lastResult: MainLiftProgress["last_result"] = null;
-
-    for (const row of liftRows) {
-      const workout = firstWorkout(row.workouts);
-
-      if (!workout) {
-        continue;
-      }
-
-      const week = workoutWeek(enrollment.started_on, workout.started_at);
-
-      if (week < 1 || week > blockLength) {
-        continue;
-      }
-
-      for (const set of completedSetRows(row)) {
-        const estimate = set.estimated_one_rep_max;
-        const existing = bestByWeek.get(week) ?? null;
-
-        if (existing === null || estimate > existing) {
-          bestByWeek.set(week, estimate);
-        }
-
-        if (
-          !firstLoggedAt ||
-          new Date(set.achieved_at) < new Date(firstLoggedAt)
-        ) {
-          firstLoggedAt = set.achieved_at;
-          firstLoggedWeight = set.weight_kg;
-        }
-
-        if (
-          !lastResult ||
-          new Date(set.achieved_at) > new Date(lastResult.achieved_at)
-        ) {
-          lastResult = {
-            achieved_at: set.achieved_at,
-            reps: set.reps,
-            weight_kg: set.weight_kg
-          };
-        }
-      }
-    }
-
-    const plannedWeight = currentWeight(exercise);
-
-    return {
-      change_kg:
-        plannedWeight !== null && firstLoggedWeight !== null
-          ? Math.round((plannedWeight - firstLoggedWeight) * 100) / 100
-          : null,
-      current_weight_kg: plannedWeight,
-      exercise_id: exercise.exercise_id,
-      exercise_name: progressionTrackName(exercise),
-      last_result: lastResult,
-      program_exercise_id: trackId ?? exercise.id,
-      rep_range: formatRepRange(exercise),
-      trend: Array.from({ length: blockLength }, (_, index) => {
-        const week = index + 1;
-        return {
-          label: `W${week}`,
-          value: bestByWeek.get(week) ?? null,
-          week
-        };
-      })
-    } satisfies MainLiftProgress;
-  }) : fallbackMainLiftsFromRows(workoutRows);
+  const mainLifts = await getTrackMainLifts({
+    blockLength,
+    enrollment,
+    supabase,
+    workoutRows
+  });
 
   return {
     active_block: {
       block_length_weeks: blockLength,
-      program_name: program.name,
+      program_name: firstProgramName(enrollment.programs) ?? "Plan",
       started_on: enrollment.started_on,
       week_number: activeWeek,
       workouts_completed_block: blockWorkouts.length,

@@ -13,7 +13,12 @@ import {
   updateProgramBasics,
   updateProgramDay
 } from "@/app/(app)/programs/actions";
-import { getProgramDetail, type ProgramDay } from "@/lib/programs/queries";
+import {
+  getProgramDayEditor,
+  getProgramEditShell,
+  type ProgramDay,
+  type ProgramEditDaySummary
+} from "@/lib/programs/queries";
 import { formatWeekdays, weekdayOptions } from "@/lib/scheduling/weekdays";
 import { requireUser } from "@/lib/auth/session";
 
@@ -22,26 +27,65 @@ type EditProgramPageProps = {
     id: string;
   }>;
   searchParams: Promise<{
+    day?: string;
     error?: string;
   }>;
 };
+
+function DaySelector({
+  days,
+  programId,
+  selectedDayId
+}: {
+  days: ProgramEditDaySummary[];
+  programId: string;
+  selectedDayId: string | null;
+}) {
+  return (
+    <section className="app-card-flat p-3">
+      <h2 className="text-sm font-black">Days</h2>
+      <div className="mt-3 grid gap-2">
+        {days.map((day) => {
+          const selected = day.id === selectedDayId;
+
+          return (
+            <Link
+              key={day.id}
+              href={`/programs/${programId}/edit?day=${day.id}`}
+              className={`flex min-h-12 items-center justify-between gap-3 rounded-md border px-3 text-sm font-black ${
+                selected
+                  ? "border-[color:var(--accent)] bg-[color:var(--panel-raised)]"
+                  : "border-[color:var(--panel-border)]"
+              }`}
+            >
+              <span className="min-w-0 truncate">
+                Day {day.day_number} - {day.name}
+              </span>
+              <span className="shrink-0 text-xs text-[color:var(--muted)]">
+                {day.exercise_count} lift{day.exercise_count === 1 ? "" : "s"}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 function DayEditor({
   day,
   isFirst,
   isLast,
-  initiallyOpen,
   programId
 }: {
   day: ProgramDay;
   isFirst: boolean;
   isLast: boolean;
-  initiallyOpen: boolean;
   programId: string;
 }) {
   return (
-    <details className="app-card overflow-hidden" open={initiallyOpen}>
-      <summary className="flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 p-4">
+    <section className="app-card overflow-hidden">
+      <header className="flex min-h-16 items-center justify-between gap-3 border-b border-[color:var(--panel-border)] p-4">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-black">
             Day {day.day_number} - {day.name}
@@ -66,11 +110,10 @@ function DayEditor({
             programId={programId}
             target="day"
           />
-          <span className="app-chip hidden shrink-0 sm:inline-flex">Edit</span>
         </div>
-      </summary>
+      </header>
 
-      <section className="space-y-3 border-t border-[color:var(--panel-border)] p-3">
+      <div className="space-y-3 p-3">
         <article className="app-card-flat p-4">
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
@@ -87,7 +130,7 @@ function DayEditor({
               <input type="hidden" name="programDayId" value={day.id} />
               <FormSubmitButton
                 pendingLabel="Deleting..."
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 disabled:cursor-wait disabled:opacity-70"
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-[color:var(--danger)]/40 px-3 text-sm font-black text-red-200 disabled:cursor-wait disabled:opacity-70"
               >
                 <Trash2 aria-hidden="true" className="size-4" />
               </FormSubmitButton>
@@ -127,6 +170,7 @@ function DayEditor({
           {day.exercises.map((exercise, index) => (
             <ProgramExerciseCard
               key={exercise.id}
+              displayOrder={index + 1}
               exercise={exercise}
               isFirst={index === 0}
               isLast={index === day.exercises.length - 1}
@@ -134,8 +178,8 @@ function DayEditor({
             />
           ))}
         </div>
-      </section>
-    </details>
+      </div>
+    </section>
   );
 }
 
@@ -143,18 +187,28 @@ export default async function EditProgramPage({
   params,
   searchParams
 }: EditProgramPageProps) {
-  const [{ id }, { error }, { supabase }] = await Promise.all([
-    params,
-    searchParams,
-    requireUser()
-  ]);
-  const program = await getProgramDetail(supabase, id);
+  const [{ id }, { day: requestedDayId, error }, { supabase }] =
+    await Promise.all([params, searchParams, requireUser()]);
+  const program = await getProgramEditShell(supabase, id);
 
   if (!program || program.is_public) {
     notFound();
   }
 
-  const days = program.weeks.flatMap((week) => week.days);
+  const selectedSummary =
+    program.days.find((day) => day.id === requestedDayId) ??
+    program.days[0] ??
+    null;
+  const selectedDay = selectedSummary
+    ? await getProgramDayEditor(
+        supabase,
+        selectedSummary.id,
+        selectedSummary.schedule_weekdays
+      )
+    : null;
+  const selectedIndex = selectedSummary
+    ? program.days.findIndex((day) => day.id === selectedSummary.id)
+    : -1;
 
   return (
     <div className="space-y-6 pb-28">
@@ -206,7 +260,7 @@ export default async function EditProgramPage({
               defaultChecked={program.schedule_type === "sequence"}
               className="size-4 accent-[color:var(--accent)]"
             />
-          <span className="text-sm font-black">Rotating split</span>
+            <span className="text-sm font-black">Rotating split</span>
           </label>
           <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] px-3">
             <input
@@ -222,7 +276,7 @@ export default async function EditProgramPage({
 
         <section className="grid gap-2">
           <h2 className="text-sm font-bold">Weekdays</h2>
-          {days.map((day) => (
+          {program.days.map((day) => (
             <label key={day.id} className="grid gap-1">
               <span className="text-xs font-bold uppercase text-[color:var(--muted)]">
                 {day.name}
@@ -246,45 +300,53 @@ export default async function EditProgramPage({
         <FormSubmitButton pendingLabel="Saving...">Save split</FormSubmitButton>
       </form>
 
-      <form
-        action={removeProgram}
-        className="app-card-flat border-[color:var(--danger)]/40 p-3"
-      >
-        <input type="hidden" name="programId" value={program.id} />
-        <FormSubmitButton
-          pendingLabel="Deleting..."
-          className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+      <div className="grid gap-3">
+        <form
+          action={removeProgram}
+          className="app-card-flat border-[color:var(--danger)]/40 p-3"
         >
-          <Trash2 aria-hidden="true" className="size-4" />
-          Delete split
-        </FormSubmitButton>
-      </form>
+          <input type="hidden" name="programId" value={program.id} />
+          <FormSubmitButton
+            pendingLabel="Deleting..."
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-md border border-[color:var(--danger)]/50 px-4 text-sm font-black text-red-200 transition active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+          >
+            <Trash2 aria-hidden="true" className="size-4" />
+            Delete split
+          </FormSubmitButton>
+        </form>
 
-      <form action={addProgramDay} className="app-card-flat grid gap-2 p-3">
-        <input type="hidden" name="programId" value={program.id} />
-        <input
-          name="name"
-          placeholder="New day name"
-          className="field-base text-base"
-        />
-        <FormSubmitButton pendingLabel="Adding...">
-          <Plus aria-hidden="true" className="size-4" />
-          Add day
-        </FormSubmitButton>
-      </form>
-
-      <div className="space-y-6">
-        {days.map((day, index) => (
-          <DayEditor
-            key={day.id}
-            day={day}
-            isFirst={index === 0}
-            isLast={index === days.length - 1}
-            initiallyOpen={index === 0}
-            programId={program.id}
+        <form action={addProgramDay} className="app-card-flat grid gap-2 p-3">
+          <input type="hidden" name="programId" value={program.id} />
+          <input
+            name="name"
+            placeholder="New day name"
+            className="field-base text-base"
           />
-        ))}
+          <FormSubmitButton pendingLabel="Adding...">
+            <Plus aria-hidden="true" className="size-4" />
+            Add day
+          </FormSubmitButton>
+        </form>
       </div>
+
+      <DaySelector
+        days={program.days}
+        programId={program.id}
+        selectedDayId={selectedSummary?.id ?? null}
+      />
+
+      {selectedDay && selectedSummary ? (
+        <DayEditor
+          day={selectedDay}
+          isFirst={selectedIndex <= 0}
+          isLast={selectedIndex === program.days.length - 1}
+          programId={program.id}
+        />
+      ) : (
+        <p className="app-card-flat p-4 text-sm font-bold text-[color:var(--muted)]">
+          Add a day to start building this split.
+        </p>
+      )}
     </div>
   );
 }

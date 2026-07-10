@@ -70,7 +70,7 @@ async function nextSortOrder(
     .limit(1)
     .maybeSingle();
 
-  return ((data as { sort_order?: number } | null)?.sort_order ?? 0) + 1;
+  return ((data as { sort_order?: number } | null)?.sort_order ?? 0) + 1000;
 }
 
 async function advanceProgramEnrollment(
@@ -298,26 +298,6 @@ async function applyDoubleProgression(
   await Promise.all(updates);
 }
 
-async function normalizeWorkoutExerciseSortOrders(
-  supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
-  workoutId: string
-) {
-  const { data } = await supabase
-    .from("workout_exercises")
-    .select("id")
-    .eq("workout_id", workoutId)
-    .order("sort_order", { ascending: true });
-
-  await Promise.all(
-    (data ?? []).map((exercise, index) =>
-      supabase
-        .from("workout_exercises")
-        .update({ sort_order: index + 1 })
-        .eq("id", exercise.id)
-    )
-  );
-}
-
 async function moveWorkoutExerciseById(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   workoutExerciseId: string,
@@ -381,7 +361,6 @@ async function moveWorkoutExerciseById(
       .eq("id", current.id);
   }
 
-  await normalizeWorkoutExerciseSortOrders(supabase, current.workout_id);
 }
 
 export async function moveWorkoutExerciseInline(input: {
@@ -400,7 +379,6 @@ export async function moveWorkoutExerciseInline(input: {
     input.direction
   );
 
-  revalidatePath("/workouts/active");
   return { ok: true };
 }
 
@@ -420,10 +398,9 @@ export async function saveWorkoutSetWeightAsPlanWeight(input: {
     .update({ target_weight_kg: weightKg })
     .eq("id", input.programSetId);
 
-  revalidatePath("/workouts/active");
   revalidatePath("/programs");
   revalidatePath("/programs/active");
-  return { ok: true };
+  return { ok: true, weightKg };
 }
 
 export async function getExerciseOptionsForCategory(category: string) {
@@ -613,7 +590,6 @@ export async function addWorkoutSetInline(input: InlineWorkoutSetMutationInput) 
     };
   }
 
-  revalidatePath("/workouts/active");
   return {
     ok: true,
     set: {
@@ -669,13 +645,14 @@ export async function completeWorkoutSetInline(input: InlineWorkoutSetInput) {
   const { supabase } = await requireUser();
 
   if (!input.setId) {
-    return { ok: false };
+    return { error: "Missing set.", ok: false };
   }
 
-  await supabase
+  const completedAt = new Date().toISOString();
+  const { data, error } = await supabase
     .from("workout_sets")
     .update({
-      completed_at: new Date().toISOString(),
+      completed_at: completedAt,
       distance_km: optionalNumberFromValue(input.distanceKm),
       duration_seconds: optionalSecondsFromMinuteValue(input.durationMinutes),
       intensity: input.intensity?.trim() || null,
@@ -683,34 +660,47 @@ export async function completeWorkoutSetInline(input: InlineWorkoutSetInput) {
       rest_seconds: optionalNumberFromValue(input.restSeconds),
       weight_kg: optionalNumberFromValue(input.weightKg)
     })
-    .eq("id", input.setId);
+    .eq("id", input.setId)
+    .select(
+      "id, completed_at, distance_km, duration_seconds, intensity, reps, rest_seconds, weight_kg"
+    )
+    .single();
 
-  revalidatePath("/workouts/active");
-  revalidatePath("/dashboard");
-  revalidatePath("/progress");
+  if (error || !data) {
+    return { error: error?.message ?? "Could not save set.", ok: false };
+  }
 
-  return { ok: true };
+  return {
+    ok: true,
+    set: {
+      ...data,
+      distance_km: data.distance_km === null ? null : Number(data.distance_km),
+      weight_kg: data.weight_kg === null ? null : Number(data.weight_kg)
+    }
+  };
 }
 
 export async function undoWorkoutSetInline(setId: string) {
   const { supabase } = await requireUser();
 
   if (!setId) {
-    return { ok: false };
+    return { error: "Missing set.", ok: false };
   }
 
-  await supabase
+  const { data, error } = await supabase
     .from("workout_sets")
     .update({
       completed_at: null
     })
-    .eq("id", setId);
+    .eq("id", setId)
+    .select("id, completed_at")
+    .single();
 
-  revalidatePath("/workouts/active");
-  revalidatePath("/dashboard");
-  revalidatePath("/progress");
+  if (error || !data) {
+    return { error: error?.message ?? "Could not undo set.", ok: false };
+  }
 
-  return { ok: true };
+  return { ok: true, set: data };
 }
 
 export async function deleteWorkoutSet(formData: FormData) {
