@@ -119,8 +119,10 @@ export default async function ProgressPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <p className="text-sm font-bold text-[color:var(--accent)]">Progress</p>
-        <h1 className="text-3xl font-black tracking-normal">12-week block</h1>
+        <p className="text-sm font-bold text-[color:var(--accent)]">
+          Progress
+        </p>
+        <h1 className="text-3xl font-black tracking-normal">Your numbers</h1>
       </header>
 
       {summary.active_block ? (
@@ -128,7 +130,7 @@ export default async function ProgressPage() {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="app-chip border-[color:var(--accent)]/40 text-[color:var(--accent)]">
-                Week {summary.active_block.week_number}/
+                Week {summary.active_block.week_number} of{" "}
                 {summary.active_block.block_length_weeks}
               </p>
               <h2 className="mt-4 text-2xl font-black">
@@ -147,7 +149,7 @@ export default async function ProgressPage() {
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
               <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-                This week
+                Workouts this week
               </p>
               <p className="mt-1 text-3xl font-black">
                 {summary.active_block.workouts_completed_this_week}
@@ -155,7 +157,7 @@ export default async function ProgressPage() {
             </div>
             <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
               <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-                This block
+                Workouts in block
               </p>
               <p className="mt-1 text-3xl font-black">
                 {summary.active_block.workouts_completed_block}
@@ -167,7 +169,7 @@ export default async function ProgressPage() {
         <section className="app-card p-5">
           <h2 className="text-xl font-black">No active plan</h2>
           <p className="mt-2 text-sm leading-6 text-[color:var(--muted)]">
-            Choose a plan to track main lifts over a 12-week block.
+            Choose a plan to track main lifts and planned progression.
           </p>
           <Link
             href="/programs"
@@ -205,21 +207,36 @@ export default async function ProgressPage() {
       <section className="grid grid-cols-3 gap-2">
         <div className="app-card-flat p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-            Week
+            This week
           </p>
-          <p className="mt-1 text-2xl font-black">{summary.periods.week.workouts}</p>
+          <p className="mt-1 text-2xl font-black">
+            {summary.periods.week.workouts}
+          </p>
+          <p className="text-[10px] font-bold text-[color:var(--muted)]">
+            workouts
+          </p>
         </div>
         <div className="app-card-flat p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-            Month
+            This month
           </p>
-          <p className="mt-1 text-2xl font-black">{summary.periods.month.workouts}</p>
+          <p className="mt-1 text-2xl font-black">
+            {summary.periods.month.workouts}
+          </p>
+          <p className="text-[10px] font-bold text-[color:var(--muted)]">
+            workouts
+          </p>
         </div>
         <div className="app-card-flat p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-            Year
+            This year
           </p>
-          <p className="mt-1 text-2xl font-black">{summary.periods.year.workouts}</p>
+          <p className="mt-1 text-2xl font-black">
+            {summary.periods.year.workouts}
+          </p>
+          <p className="text-[10px] font-bold text-[color:var(--muted)]">
+            workouts
+          </p>
         </div>
       </section>
 
