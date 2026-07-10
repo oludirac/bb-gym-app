@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, Dumbbell, Flame, LibraryBig, MoreHorizontal } from "lucide-react";
+import { BarChart3, Dumbbell, Flame, MoreHorizontal, Trophy } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/dashboard", icon: Flame, label: "Today" },
   { href: "/workouts/active", icon: Dumbbell, label: "Workout" },
   { href: "/progress", icon: BarChart3, label: "Progress" },
-  { href: "/exercises", icon: LibraryBig, label: "Exercises" },
+  { href: "/programs", icon: Trophy, label: "Plans" },
   { href: "/more", icon: MoreHorizontal, label: "More" }
 ];
 
