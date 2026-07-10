@@ -192,13 +192,13 @@ export default async function EditProgramPage({
             name="description"
             rows={3}
             defaultValue={program.description ?? ""}
-            className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] px-3 py-3 text-base outline-none focus:border-[color:var(--accent)]"
+            className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] px-3 py-3 text-base outline-none focus:border-[color:var(--accent)]"
           />
         </label>
 
         <fieldset className="grid gap-2">
           <legend className="text-sm font-bold">Mode</legend>
-          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
+          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] px-3">
             <input
               type="radio"
               name="scheduleType"
@@ -208,7 +208,7 @@ export default async function EditProgramPage({
             />
           <span className="text-sm font-black">Rotating split</span>
           </label>
-          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] px-3">
+          <label className="flex min-h-12 items-center gap-3 rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] px-3">
             <input
               type="radio"
               name="scheduleType"

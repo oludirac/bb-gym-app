@@ -769,7 +769,7 @@ export function ActiveWorkoutConsole({
                   </p>
                 </div>
 
-                <div className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+                <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
                   <p className="text-xs font-black uppercase text-[color:var(--muted)]">
                     Reps
                   </p>
@@ -1147,7 +1147,7 @@ export function ActiveWorkoutConsole({
 
       {readyToFinish ? (
         <div className="fixed inset-x-0 bottom-[5.75rem] z-20 px-4">
-          <div className="mx-auto max-w-md rounded-md border border-[color:var(--panel-border)] bg-[#080a0d]/95 p-2 backdrop-blur-xl">
+          <div className="mx-auto max-w-md rounded-md border border-[color:var(--panel-border)] bg-[color:var(--background)] p-2 backdrop-blur-xl">
             <form action={finishWorkout}>
               <input type="hidden" name="workoutId" value={workout.id} />
               <FormSubmitButton pendingLabel="Completing...">

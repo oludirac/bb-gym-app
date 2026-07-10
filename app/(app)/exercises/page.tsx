@@ -12,8 +12,6 @@ import {
 } from "@/lib/exercises/categories";
 import { requireUser } from "@/lib/auth/session";
 
-const difficulties = ["beginner", "intermediate", "advanced"];
-
 type ExercisesPageProps = {
   searchParams: Promise<ExerciseFilters>;
 };
@@ -56,14 +54,15 @@ export default async function ExercisesPage({
     requireUser(),
     searchParams
   ]);
-  const filters = normalizeExerciseFilters(params);
+  const filters = {
+    ...normalizeExerciseFilters(params),
+    difficulty: undefined
+  };
   const [exercises, muscles] = await Promise.all([
     getExerciseSummaries(supabase, filters),
     getMuscleOptions(supabase)
   ]);
-  const hasFilters = Boolean(
-    filters.q || filters.category || filters.difficulty || filters.muscle
-  );
+  const hasFilters = Boolean(filters.q || filters.category || filters.muscle);
 
   return (
     <div className="space-y-6">
@@ -112,19 +111,6 @@ export default async function ExercisesPage({
             {bodyPartCategories.map((category) => (
               <option key={category} value={category}>
                 {formatExerciseCategory(category)}
-              </option>
-            ))}
-          </FilterSelect>
-
-          <FilterSelect
-            label="Difficulty"
-            name="difficulty"
-            value={filters.difficulty}
-          >
-            <option value="">All difficulties</option>
-            {difficulties.map((difficulty) => (
-              <option key={difficulty} value={difficulty}>
-                {difficulty}
               </option>
             ))}
           </FilterSelect>
@@ -182,7 +168,7 @@ export default async function ExercisesPage({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#0d1117] text-[color:var(--muted)]">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--panel-raised)] text-[color:var(--muted)]">
                       <Dumbbell aria-hidden="true" className="size-5" />
                     </div>
                     <div className="min-w-0 space-y-1">
@@ -190,8 +176,7 @@ export default async function ExercisesPage({
                       {exercise.name}
                     </h3>
                     <p className="text-xs capitalize text-[color:var(--muted)]">
-                      {formatValue(exercise.category)} -{" "}
-                      {formatValue(exercise.difficulty)}
+                      {formatValue(exercise.category)}
                     </p>
                     </div>
                   </div>

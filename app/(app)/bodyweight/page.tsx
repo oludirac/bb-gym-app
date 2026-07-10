@@ -49,7 +49,7 @@ export default async function BodyweightPage() {
         className="app-card space-y-3 p-4"
       >
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#0d1117] text-[color:var(--accent)]">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-[color:var(--panel-raised)] text-[color:var(--accent)]">
             <Scale aria-hidden="true" className="size-5" />
           </div>
           <h2 className="text-base font-black">Add weigh-in</h2>

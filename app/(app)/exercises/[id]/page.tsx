@@ -91,12 +91,6 @@ export default async function ExerciseDetailPage({
                 {formatValue(exercise.movement_pattern)}
               </dd>
             </div>
-            <div className="flex items-start justify-between gap-4">
-              <dt className="text-[color:var(--muted)]">Difficulty</dt>
-              <dd className="text-right capitalize">
-                {formatValue(exercise.difficulty)}
-              </dd>
-            </div>
           </dl>
         </div>
 

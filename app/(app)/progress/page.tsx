@@ -39,7 +39,7 @@ function MiniTrend({ lift }: { lift: MainLiftProgress }) {
 
         return (
           <div key={point.week} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-            <div className="flex h-16 w-full items-end rounded-lg bg-[#0d1117] p-1">
+            <div className="flex h-16 w-full items-end rounded-lg bg-[color:var(--panel-raised)] p-1">
               <div
                 className={`w-full rounded-md ${
                   point.value === null
@@ -83,7 +83,7 @@ function MainLiftCard({
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <div className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+        <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
             Last
           </p>
@@ -95,7 +95,7 @@ function MainLiftCard({
               : "No sets"}
           </p>
         </div>
-        <div className="rounded-md border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+        <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
             Since first
           </p>
@@ -147,7 +147,7 @@ export default async function ProgressPage() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+            <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
               <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
                 Workouts this week
               </p>
@@ -155,7 +155,7 @@ export default async function ProgressPage() {
                 {summary.active_block.workouts_completed_this_week}
               </p>
             </div>
-            <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+            <div className="rounded-2xl border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
               <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
                 Workouts on split
               </p>
@@ -253,32 +253,6 @@ export default async function ProgressPage() {
               <Scale aria-hidden="true" className="size-4 text-[color:var(--accent)]" />
               {formatWeight(latestWeight.weight_kg, unit)}
             </div>
-          </div>
-        </section>
-      ) : null}
-
-      {summary.recent_bests.length > 0 ? (
-        <section className="space-y-3">
-          <h2 className="text-lg font-black">Best sets</h2>
-          <div className="grid gap-2">
-            {summary.recent_bests.map((best) => (
-              <article
-                key={`${best.exercise_id}-${best.achieved_at}-${best.weight_kg}-${best.reps}`}
-                className="app-card-flat flex items-center justify-between gap-3 p-3"
-              >
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-black">
-                    {best.exercise_name}
-                  </h3>
-                  <p className="mt-1 text-xs text-[color:var(--muted)]">
-                    {formatDate(best.achieved_at)}
-                  </p>
-                </div>
-                <p className="shrink-0 text-sm font-black">
-                  {formatWeight(best.weight_kg, unit)} x {best.reps}
-                </p>
-              </article>
-            ))}
           </div>
         </section>
       ) : null}

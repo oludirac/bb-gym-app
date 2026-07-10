@@ -15,6 +15,7 @@ import {
   startWorkoutFromProgramDay
 } from "@/app/(app)/programs/actions";
 import { getTodayPlanOverview, type ProgramDay } from "@/lib/programs/queries";
+import { groupedSetSummaries } from "@/lib/programs/set-summary";
 import { getActiveWorkoutSummary } from "@/lib/workouts/queries";
 import { requireUser } from "@/lib/auth/session";
 
@@ -45,13 +46,24 @@ function formatTodayDate() {
 function daySummary(day: ProgramDay | null) {
   if (!day) {
     return {
-      exercises: [],
+      exercises: [] as {
+        id: string;
+        name: string;
+        prescription: string;
+      }[],
       setCount: 0
     };
   }
 
   return {
-    exercises: day.exercises.slice(0, 4).map((exercise) => exercise.exercise_name),
+    exercises: day.exercises.slice(0, 4).map((exercise) => ({
+      id: exercise.id,
+      name: exercise.exercise_name,
+      prescription: groupedSetSummaries(
+        exercise.sets,
+        exercise.exercise_category
+      ).join(", ")
+    })),
     setCount: day.exercises.reduce(
       (total, exercise) => total + exercise.sets.length,
       0
@@ -153,9 +165,14 @@ export default async function DashboardPage() {
           {dueSummary.exercises.length > 0 ? (
             <div className="divide-y divide-[color:var(--panel-border)] border-y border-[color:var(--panel-border)]">
               {dueSummary.exercises.map((exercise) => (
-                <p key={exercise} className="py-3 text-sm font-bold">
-                  {exercise}
-                </p>
+                <div key={exercise.id} className="py-3">
+                  <p className="text-sm font-black">{exercise.name}</p>
+                  {exercise.prescription ? (
+                    <p className="mt-1 text-xs font-bold text-[color:var(--muted)]">
+                      {exercise.prescription}
+                    </p>
+                  ) : null}
+                </div>
               ))}
             </div>
           ) : null}
@@ -251,6 +268,20 @@ export default async function DashboardPage() {
                 {formatDayDate(todayPlan.missed.scheduled_for)}.{" "}
                 {missedSummary.setCount} planned sets.
               </p>
+              {missedSummary.exercises.length > 0 ? (
+                <div className="mt-3 divide-y divide-[color:var(--panel-border)] border-y border-[color:var(--panel-border)]">
+                  {missedSummary.exercises.map((exercise) => (
+                    <div key={exercise.id} className="py-2">
+                      <p className="text-sm font-black">{exercise.name}</p>
+                      {exercise.prescription ? (
+                        <p className="mt-1 text-xs font-bold text-[color:var(--muted)]">
+                          {exercise.prescription}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <form action={startWorkoutFromProgramDay}>
                   <input

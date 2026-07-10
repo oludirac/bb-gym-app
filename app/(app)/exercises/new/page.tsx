@@ -8,8 +8,6 @@ import {
 import { getMuscleOptions } from "@/lib/exercises/queries";
 import { requireUser } from "@/lib/auth/session";
 
-const difficulties = ["", "beginner", "intermediate", "advanced"];
-
 type NewExercisePageProps = {
   searchParams: Promise<{
     error?: string;
@@ -96,36 +94,20 @@ export default async function NewExercisePage({
           />
         </label>
 
-        <div className="grid gap-3">
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Category</span>
-            <select
-              name="category"
-              className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base capitalize outline-none focus:border-[color:var(--accent)]"
-              required
-            >
-              {bodyPartCategories.map((category) => (
-                <option key={category} value={category}>
-                  {formatExerciseCategory(category)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="grid gap-2">
-            <span className="text-sm font-medium">Difficulty</span>
-            <select
-              name="difficulty"
-              className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base capitalize outline-none focus:border-[color:var(--accent)]"
-            >
-              {difficulties.map((difficulty) => (
-                <option key={difficulty || "none"} value={difficulty}>
-                  {difficulty || "Not set"}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <label className="grid gap-2">
+          <span className="text-sm font-medium">Category</span>
+          <select
+            name="category"
+            className="min-h-12 rounded-md border border-[color:var(--panel-border)] bg-zinc-950 px-3 text-base capitalize outline-none focus:border-[color:var(--accent)]"
+            required
+          >
+            {bodyPartCategories.map((category) => (
+              <option key={category} value={category}>
+                {formatExerciseCategory(category)}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="grid gap-2">
           <span className="text-sm font-medium">Equipment</span>

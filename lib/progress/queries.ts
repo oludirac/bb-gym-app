@@ -39,14 +39,6 @@ export type ProgressSummary = {
     week: { workouts: number };
     year: { workouts: number };
   };
-  recent_bests: {
-    achieved_at: string;
-    estimated_one_rep_max: number;
-    exercise_id: string;
-    exercise_name: string;
-    reps: number;
-    weight_kg: number;
-  }[];
 };
 
 type RawEnrollment = {
@@ -369,31 +361,6 @@ export async function getProgressSummary(supabase: SupabaseClient) {
 
   if (!enrollment) {
     const loggedRows = await getLoggedWorkoutRows(supabase);
-    const recentBests = loggedRows
-      .flatMap(completedSetRows)
-      .sort(
-        (a, b) =>
-          b.estimated_one_rep_max - a.estimated_one_rep_max ||
-          new Date(b.achieved_at).getTime() - new Date(a.achieved_at).getTime()
-      )
-      .slice(0, 5)
-      .map(
-        ({
-          achieved_at,
-          estimated_one_rep_max,
-          exercise_id,
-          exercise_name,
-          reps,
-          weight_kg
-        }) => ({
-          achieved_at,
-          estimated_one_rep_max,
-          exercise_id,
-          exercise_name,
-          reps,
-          weight_kg
-        })
-      );
 
     return {
       active_block: null,
@@ -402,8 +369,7 @@ export async function getProgressSummary(supabase: SupabaseClient) {
         weight_kg: Number(log.weight_kg)
       })),
       main_lifts: fallbackMainLiftsFromRows(loggedRows),
-      periods,
-      recent_bests: recentBests
+      periods
     } satisfies ProgressSummary;
   }
 
@@ -423,8 +389,7 @@ export async function getProgressSummary(supabase: SupabaseClient) {
       active_block: null,
       bodyweight: [],
       main_lifts: [],
-      periods,
-      recent_bests: []
+      periods
     } satisfies ProgressSummary;
   }
 
@@ -459,32 +424,6 @@ export async function getProgressSummary(supabase: SupabaseClient) {
   }
 
   const workoutRows = (rows ?? []) as RawWorkoutExercise[];
-  const recentBests = workoutRows
-    .flatMap(completedSetRows)
-    .sort(
-      (a, b) =>
-        b.estimated_one_rep_max - a.estimated_one_rep_max ||
-        new Date(b.achieved_at).getTime() - new Date(a.achieved_at).getTime()
-    )
-    .slice(0, 5)
-    .map(
-      ({
-        achieved_at,
-        estimated_one_rep_max,
-        exercise_id,
-        exercise_name,
-        reps,
-        weight_kg
-      }) => ({
-        achieved_at,
-        estimated_one_rep_max,
-        exercise_id,
-        exercise_name,
-        reps,
-        weight_kg
-      })
-    );
-
   const mainLifts = mainExercises.length > 0 ? mainExercises.map((exercise) => {
     const liftRows = workoutRows.filter(
       (row) =>
@@ -576,7 +515,6 @@ export async function getProgressSummary(supabase: SupabaseClient) {
       weight_kg: Number(log.weight_kg)
     })),
     main_lifts: mainLifts,
-    periods,
-    recent_bests: recentBests
+    periods
   } satisfies ProgressSummary;
 }

@@ -9,23 +9,22 @@ import {
 } from "@/lib/programs/queries";
 import { requireUser } from "@/lib/auth/session";
 
-function formatValue(value: string | null | undefined) {
-  return value ? value.replaceAll("_", " ") : "Not set";
-}
-
 function ProgramCard({ program }: { program: ProgramSummary }) {
+  const schedule =
+    program.schedule_type === "calendar" ? "Scheduled days" : "Rotating split";
+
   return (
     <article className="app-card-flat p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[#0d1117] text-[color:var(--muted)]">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-md bg-[color:var(--panel-raised)] text-[color:var(--muted)]">
             <Trophy aria-hidden="true" className="size-5" />
           </div>
           <div className="min-w-0">
             <h2 className="text-lg font-black">{program.name}</h2>
             <p className="mt-1 text-sm capitalize text-[color:var(--muted)]">
-              {formatValue(program.difficulty)} - {program.day_count} day
-              {program.day_count === 1 ? "" : "s"}
+              {program.day_count} day{program.day_count === 1 ? "" : "s"} -{" "}
+              {schedule}
             </p>
           </div>
         </div>
@@ -34,9 +33,7 @@ function ProgramCard({ program }: { program: ProgramSummary }) {
         </span>
       </div>
       <p className="mt-3 text-sm font-bold text-[color:var(--muted)]">
-        {program.schedule_type === "calendar"
-          ? "Scheduled days"
-          : "Rotating split"}
+        {program.days_per_week ? `${program.days_per_week}/week` : schedule}
       </p>
 
       {program.description ? (

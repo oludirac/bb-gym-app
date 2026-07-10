@@ -106,7 +106,7 @@ export function ProgramSetEditor({
   }
 
   return (
-    <div className="rounded-xl border border-[color:var(--panel-border)] bg-[#0d1117] p-3">
+    <div className="rounded-xl border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-black">Set {set.sort_order}</p>
         <button
