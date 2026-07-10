@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
 import { bodyPartCategorySet } from "@/lib/exercises/categories";
+import { findOrCreateProgressionTrack } from "@/lib/progression/tracks";
+import type { ProgramProgressionStyle } from "@/lib/programs/queries";
 import { displayUnitToKg } from "@/lib/unit-conversion";
 import { normalizeCsvName, parseCsv } from "@/lib/csv";
 
@@ -60,7 +62,7 @@ type ParsedProgramRow = {
   exerciseId: string;
   exerciseName: string;
   notes: string | null;
-  progressionStyle: string;
+  progressionStyle: ProgramProgressionStyle;
   repsMax: number | null;
   repsMin: number | null;
   restSeconds: number | null;
@@ -317,7 +319,7 @@ export async function importProgramCsv(formData: FormData) {
     );
     const progressionStyle = normalizeEnumValue(
       row.progression_style || "double_progression"
-    );
+    ) as ProgramProgressionStyle;
     const weightIncrementKg =
       optionalNumber(row.weight_increment_kg ?? "") ??
       (exerciseCategory === "cardio" ? 0 : 2.5);
@@ -600,10 +602,25 @@ export async function importProgramCsv(formData: FormData) {
           continue;
         }
 
-        await supabase.from("program_sets").insert(
-          exerciseRows.map((row) => ({
+        const programSets = [];
+
+        for (const row of exerciseRows) {
+          const track = await findOrCreateProgressionTrack(supabase, {
+            currentWeightKg: row.weightKg,
+            exerciseId: firstExerciseRow.exerciseId,
+            exerciseName: firstExerciseRow.exerciseName,
+            ownerId: user.id,
+            programId: program.id,
+            progressionStyle: firstExerciseRow.progressionStyle,
+            repsMax: row.repsMax,
+            repsMin: row.repsMin,
+            weightIncrementKg: firstExerciseRow.weightIncrementKg
+          });
+
+          programSets.push({
             notes: row.notes,
             program_exercise_id: programExercise.id,
+            progression_track_id: track?.id ?? null,
             rest_seconds: row.restSeconds,
             set_type: row.setType,
             sort_order: row.setOrder,
@@ -614,9 +631,11 @@ export async function importProgramCsv(formData: FormData) {
             target_reps_min: row.repsMin,
             target_rir: row.rir,
             target_rpe: row.rpe,
-            target_weight_kg: row.weightKg
-          }))
-        );
+            target_weight_kg: track?.current_weight_kg ?? row.weightKg
+          });
+        }
+
+        await supabase.from("program_sets").insert(programSets);
       }
     }
   }

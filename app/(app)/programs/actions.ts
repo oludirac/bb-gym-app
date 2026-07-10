@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/session";
+import { findOrCreateProgressionTrack } from "@/lib/progression/tracks";
 import {
   getProgramDetail,
   type ProgramProgressionStyle,
@@ -607,7 +608,7 @@ export async function moveProgramDayInline(input: {
 }
 
 export async function addProgramExercise(formData: FormData) {
-  const { supabase } = await requireUser();
+  const { supabase, user } = await requireUser();
   const programId = fieldValue(formData, "programId");
   const programDayId = fieldValue(formData, "programDayId");
   const exerciseId = fieldValue(formData, "exerciseId");
@@ -641,6 +642,8 @@ export async function addProgramExercise(formData: FormData) {
   const weightIncrementKg =
     optionalNumber(fieldValue(formData, "weightIncrementKg")) ?? 2.5;
   const trackAsMainLift = fieldValue(formData, "trackAsMainLift") === "on";
+  const separateProgressionTrack =
+    fieldValue(formData, "separateProgressionTrack") === "on";
   const targetDurationSeconds = optionalSecondsFromMinutes(
     fieldValue(formData, "targetDurationMinutes")
   );
@@ -680,6 +683,12 @@ export async function addProgramExercise(formData: FormData) {
     .single();
 
   if (programExercise?.id) {
+    const { data: exercise } = await supabase
+      .from("exercises")
+      .select("name")
+      .eq("id", exerciseId)
+      .maybeSingle();
+    const exerciseName = exercise?.name ?? "Exercise";
     const weightedSets =
       progressionStyle === "top_set_backoff" && !isCardio
         ? [
@@ -724,7 +733,32 @@ export async function addProgramExercise(formData: FormData) {
           }))
       );
     } else {
-      await supabase.from("program_sets").insert(weightedSets);
+      const setsWithTracks = [];
+
+      for (const set of weightedSets) {
+        const track = await findOrCreateProgressionTrack(supabase, {
+          currentWeightKg: set.target_weight_kg ?? null,
+          exerciseId,
+          exerciseName,
+          ownerId: user.id,
+          programId,
+          progressionStyle,
+          repsMax: set.target_reps_max ?? null,
+          repsMin: set.target_reps_min ?? null,
+          separateKey: separateProgressionTrack
+            ? `${programExercise.id}:${set.target_reps_min ?? "null"}:${set.target_reps_max ?? "null"}`
+            : null,
+          weightIncrementKg
+        });
+
+        setsWithTracks.push({
+          ...set,
+          progression_track_id: track?.id ?? null,
+          target_weight_kg: track?.current_weight_kg ?? set.target_weight_kg
+        });
+      }
+
+      await supabase.from("program_sets").insert(setsWithTracks);
     }
   }
 
@@ -935,7 +969,7 @@ export async function addProgramSetInline(input: InlineProgramSetInput) {
   const { data: previousSet } = await supabase
     .from("program_sets")
     .select(
-      "target_reps_min, target_reps_max, target_weight_kg, target_duration_seconds, target_distance_km, target_intensity"
+      "progression_track_id, target_reps_min, target_reps_max, target_weight_kg, target_duration_seconds, target_distance_km, target_intensity"
     )
     .eq("program_exercise_id", input.programExerciseId)
     .order("sort_order", { ascending: false })
@@ -953,10 +987,11 @@ export async function addProgramSetInline(input: InlineProgramSetInput) {
       target_intensity: previousSet?.target_intensity ?? null,
       target_reps_min: previousSet?.target_reps_min ?? 8,
       target_reps_max: previousSet?.target_reps_max ?? 10,
+      progression_track_id: previousSet?.progression_track_id ?? null,
       target_weight_kg: previousSet?.target_weight_kg ?? null
     })
     .select(
-      "id, notes, rest_seconds, set_type, sort_order, target_distance_km, target_duration_seconds, target_intensity, target_reps_min, target_reps_max, target_rir, target_rpe, target_weight_kg"
+      "id, notes, progression_track_id, progression_tracks(id, name, current_weight_kg), rest_seconds, set_type, sort_order, target_distance_km, target_duration_seconds, target_intensity, target_reps_min, target_reps_max, target_rir, target_rpe, target_weight_kg"
     )
     .single();
 
@@ -968,10 +1003,24 @@ export async function addProgramSetInline(input: InlineProgramSetInput) {
     revalidatePath(`/programs/${input.programId}/edit`);
   }
 
+  const rawProgressionTrack = Array.isArray(data.progression_tracks)
+    ? data.progression_tracks[0] ?? null
+    : data.progression_tracks;
+
   return {
     ok: true,
     set: {
       ...data,
+      progression_track: rawProgressionTrack
+        ? {
+            current_weight_kg:
+              rawProgressionTrack.current_weight_kg === null
+                ? null
+                : Number(rawProgressionTrack.current_weight_kg),
+            id: rawProgressionTrack.id,
+            name: rawProgressionTrack.name
+          }
+        : null,
       target_distance_km:
         data.target_distance_km === null ? null : Number(data.target_distance_km),
       target_rir: data.target_rir === null ? null : Number(data.target_rir),
@@ -1035,7 +1084,7 @@ export async function updateProgramSetInline(input: InlineProgramSetInput) {
     })
     .eq("id", input.setId)
     .select(
-      "id, notes, rest_seconds, set_type, sort_order, target_distance_km, target_duration_seconds, target_intensity, target_reps_min, target_reps_max, target_rir, target_rpe, target_weight_kg"
+      "id, notes, progression_track_id, progression_tracks(id, name, current_weight_kg), rest_seconds, set_type, sort_order, target_distance_km, target_duration_seconds, target_intensity, target_reps_min, target_reps_max, target_rir, target_rpe, target_weight_kg"
     )
     .single();
 
@@ -1047,10 +1096,24 @@ export async function updateProgramSetInline(input: InlineProgramSetInput) {
     revalidatePath(`/programs/${input.programId}/edit`);
   }
 
+  const rawProgressionTrack = Array.isArray(data.progression_tracks)
+    ? data.progression_tracks[0] ?? null
+    : data.progression_tracks;
+
   return {
     ok: true,
     set: {
       ...data,
+      progression_track: rawProgressionTrack
+        ? {
+            current_weight_kg:
+              rawProgressionTrack.current_weight_kg === null
+                ? null
+                : Number(rawProgressionTrack.current_weight_kg),
+            id: rawProgressionTrack.id,
+            name: rawProgressionTrack.name
+          }
+        : null,
       target_distance_km:
         data.target_distance_km === null ? null : Number(data.target_distance_km),
       target_rir: data.target_rir === null ? null : Number(data.target_rir),
@@ -1196,10 +1259,26 @@ export async function copyProgram(formData: FormData) {
           continue;
         }
 
-        await supabase.from("program_sets").insert(
-          exercise.sets.map((set) => ({
+        const copiedSets = [];
+
+        for (const set of exercise.sets) {
+          const track = await findOrCreateProgressionTrack(supabase, {
+            currentWeightKg:
+              set.progression_track?.current_weight_kg ?? set.target_weight_kg,
+            exerciseId: exercise.exercise_id,
+            exerciseName: exercise.exercise_name,
+            ownerId: user.id,
+            programId: copiedProgram.id,
+            progressionStyle: exercise.progression_style,
+            repsMax: set.target_reps_max,
+            repsMin: set.target_reps_min,
+            weightIncrementKg: exercise.weight_increment_kg
+          });
+
+          copiedSets.push({
             notes: set.notes,
             program_exercise_id: copiedExercise.id,
+            progression_track_id: track?.id ?? null,
             rest_seconds: set.rest_seconds,
             set_type: set.set_type,
             sort_order: set.sort_order,
@@ -1210,9 +1289,12 @@ export async function copyProgram(formData: FormData) {
             target_reps_min: set.target_reps_min,
             target_rir: set.target_rir,
             target_rpe: set.target_rpe,
-            target_weight_kg: set.target_weight_kg
-          }))
-        );
+            target_weight_kg:
+              track?.current_weight_kg ?? set.target_weight_kg
+          });
+        }
+
+        await supabase.from("program_sets").insert(copiedSets);
       }
     }
   }
@@ -1542,7 +1624,8 @@ export async function startWorkoutFromProgramDay(formData: FormData) {
         rpe: set.target_rpe,
         set_type: set.set_type,
         sort_order: set.sort_order,
-        weight_kg: set.target_weight_kg,
+        weight_kg:
+          set.progression_track?.current_weight_kg ?? set.target_weight_kg,
         workout_exercise_id: workoutExercise.id
       }))
     );

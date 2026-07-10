@@ -112,6 +112,14 @@ type RawWorkout = {
 
 type RawProgramSetTarget = {
   id: string;
+  progression_tracks:
+    | {
+        current_weight_kg: number | null;
+      }
+    | {
+        current_weight_kg: number | null;
+      }[]
+    | null;
   sort_order: number;
   target_distance_km: number | null;
   target_duration_seconds: number | null;
@@ -266,6 +274,9 @@ async function getProgramTargets(
         program_sets (
           id,
           sort_order,
+          progression_tracks (
+            current_weight_kg
+          ),
           target_duration_seconds,
           target_distance_km,
           target_intensity,
@@ -295,6 +306,9 @@ async function getProgramTargets(
 
   for (const exercise of (data ?? []) as RawProgramExerciseTarget[]) {
     for (const set of exercise.program_sets ?? []) {
+      const rawTrack = Array.isArray(set.progression_tracks)
+        ? set.progression_tracks[0] ?? null
+        : set.progression_tracks;
       const target = {
         target_distance_km:
           set.target_distance_km === null ? null : Number(set.target_distance_km),
@@ -303,7 +317,12 @@ async function getProgramTargets(
         target_reps_max: set.target_reps_max,
         target_reps_min: set.target_reps_min,
         target_weight_kg:
-          set.target_weight_kg === null ? null : Number(set.target_weight_kg)
+          rawTrack?.current_weight_kg !== null &&
+          rawTrack?.current_weight_kg !== undefined
+            ? Number(rawTrack.current_weight_kg)
+            : set.target_weight_kg === null
+              ? null
+              : Number(set.target_weight_kg)
       };
 
       targets.set(setContextKey(exercise.sort_order, set.sort_order), target);

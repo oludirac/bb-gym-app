@@ -115,18 +115,39 @@ function workoutWeek(startedOn: string, value: string) {
   return weekNumberFor(startedOn, new Date(value));
 }
 
-function mainLiftCandidates(programExercises: ProgramExercise[]) {
-  const tracked = programExercises.filter((exercise) => exercise.track_as_main_lift);
+function exerciseProgressionKey(exercise: ProgramExercise) {
+  const trackedSet = exercise.sets.find((set) => set.progression_track_id);
 
-  if (tracked.length > 0) {
-    return tracked;
+  if (trackedSet?.progression_track_id) {
+    return `track:${trackedSet.progression_track_id}`;
   }
 
-  return programExercises
-    .filter((exercise) =>
-      exercise.sets.some((set) => set.target_weight_kg !== null)
-    )
-    .slice(0, 4);
+  return `exercise:${exercise.exercise_id}:${formatRepRange(exercise)}`;
+}
+
+function mainLiftCandidates(programExercises: ProgramExercise[]) {
+  const tracked = programExercises.filter((exercise) => exercise.track_as_main_lift);
+  const candidates =
+    tracked.length > 0
+      ? tracked
+      : programExercises.filter((exercise) =>
+          exercise.sets.some((set) => set.target_weight_kg !== null)
+        );
+  const seen = new Set<string>();
+  const uniqueCandidates: ProgramExercise[] = [];
+
+  for (const exercise of candidates) {
+    const key = exerciseProgressionKey(exercise);
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    uniqueCandidates.push(exercise);
+  }
+
+  return uniqueCandidates.slice(0, 4);
 }
 
 function formatRepRange(exercise: ProgramExercise) {
@@ -151,10 +172,30 @@ function formatRepRange(exercise: ProgramExercise) {
 }
 
 function currentWeight(exercise: ProgramExercise) {
+  const firstTracked = exercise.sets.find(
+    (set) =>
+      set.progression_track?.current_weight_kg !== null &&
+      set.progression_track?.current_weight_kg !== undefined
+  );
+
+  if (firstTracked?.progression_track?.current_weight_kg !== undefined) {
+    return firstTracked.progression_track.current_weight_kg;
+  }
+
   const firstWeighted = exercise.sets.find(
     (set) => set.target_weight_kg !== null
   );
   return firstWeighted?.target_weight_kg ?? null;
+}
+
+function progressionTrackId(exercise: ProgramExercise) {
+  return exercise.sets.find((set) => set.progression_track_id)
+    ?.progression_track_id ?? null;
+}
+
+function progressionTrackName(exercise: ProgramExercise) {
+  return exercise.sets.find((set) => set.progression_track?.name)
+    ?.progression_track?.name ?? exercise.exercise_name;
 }
 
 function periodCount(workouts: RawWorkout[], start: Date) {
@@ -425,10 +466,24 @@ export async function getProgressSummary(supabase: SupabaseClient) {
 
   const workoutRows = (rows ?? []) as RawWorkoutExercise[];
   const mainLifts = mainExercises.length > 0 ? mainExercises.map((exercise) => {
-    const liftRows = workoutRows.filter(
-      (row) =>
-        row.program_exercise_id === exercise.id ||
-        row.exercise_id === exercise.exercise_id
+    const trackId = progressionTrackId(exercise);
+    const linkedProgramExerciseIds = trackId
+      ? new Set(
+          programExercises
+            .filter((candidate) =>
+              candidate.sets.some(
+                (set) => set.progression_track_id === trackId
+              )
+            )
+            .map((candidate) => candidate.id)
+        )
+      : null;
+    const liftRows = workoutRows.filter((row) =>
+      linkedProgramExerciseIds
+        ? row.program_exercise_id !== null &&
+          linkedProgramExerciseIds.has(row.program_exercise_id)
+        : row.program_exercise_id === exercise.id ||
+          row.exercise_id === exercise.exercise_id
     );
     const bestByWeek = new Map<number, number>();
     let firstLoggedAt: string | null = null;
@@ -486,9 +541,9 @@ export async function getProgressSummary(supabase: SupabaseClient) {
           : null,
       current_weight_kg: plannedWeight,
       exercise_id: exercise.exercise_id,
-      exercise_name: exercise.exercise_name,
+      exercise_name: progressionTrackName(exercise),
       last_result: lastResult,
-      program_exercise_id: exercise.id,
+      program_exercise_id: trackId ?? exercise.id,
       rep_range: formatRepRange(exercise),
       trend: Array.from({ length: blockLength }, (_, index) => {
         const week = index + 1;

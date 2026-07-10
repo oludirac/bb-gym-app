@@ -15,6 +15,12 @@ export type ProgramDaySchedule = {
 export type ProgramSet = {
   id: string;
   notes: string | null;
+  progression_track: {
+    current_weight_kg: number | null;
+    id: string;
+    name: string;
+  } | null;
+  progression_track_id: string | null;
   rest_seconds: number | null;
   set_type: string;
   sort_order: number;
@@ -150,7 +156,27 @@ type RawProgramDaySchedule = {
   weekday: number;
 };
 
-type RawProgramSet = ProgramSet;
+type RawProgramSet = Omit<
+  ProgramSet,
+  "progression_track" | "target_distance_km" | "target_rir" | "target_rpe" | "target_weight_kg"
+> & {
+  progression_tracks:
+    | {
+        current_weight_kg: number | null;
+        id: string;
+        name: string;
+      }
+    | {
+        current_weight_kg: number | null;
+        id: string;
+        name: string;
+      }[]
+    | null;
+  target_distance_km: number | null;
+  target_rir: number | null;
+  target_rpe: number | null;
+  target_weight_kg: number | null;
+};
 
 type RawProgramExercise = {
   exercise_id: string;
@@ -253,6 +279,12 @@ const programDetailSelect = `
           target_duration_seconds,
           target_distance_km,
           target_intensity,
+          progression_track_id,
+          progression_tracks (
+            id,
+            name,
+            current_weight_kg
+          ),
           target_reps_min,
           target_reps_max,
           target_weight_kg,
@@ -290,8 +322,21 @@ function firstExerciseCategory(rawExercise: RawProgramExercise["exercises"]) {
 }
 
 function mapProgramSet(set: RawProgramSet): ProgramSet {
+  const rawTrack = "progression_tracks" in set ? set.progression_tracks : null;
+  const track = Array.isArray(rawTrack) ? rawTrack[0] ?? null : rawTrack;
+
   return {
     ...set,
+    progression_track: track
+      ? {
+          current_weight_kg:
+            track.current_weight_kg === null
+              ? null
+              : Number(track.current_weight_kg),
+          id: track.id,
+          name: track.name
+        }
+      : null,
     target_distance_km:
       set.target_distance_km === null ? null : Number(set.target_distance_km),
     target_rir: set.target_rir === null ? null : Number(set.target_rir),

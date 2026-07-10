@@ -178,6 +178,7 @@ async function applyDoubleProgression(
         weight_increment_kg,
         program_sets (
           id,
+          progression_track_id,
           set_type,
           sort_order,
           target_reps_min,
@@ -215,6 +216,7 @@ async function applyDoubleProgression(
     while (index < programSets.length) {
       const first = programSets[index];
       let lastIndex = index;
+      const progressionTrackId = first.progression_track_id ?? null;
       const targetWeight =
         first.target_weight_kg === null
           ? null
@@ -222,9 +224,15 @@ async function applyDoubleProgression(
 
       while (
         lastIndex + 1 < programSets.length &&
-        programSets[lastIndex + 1].target_weight_kg === first.target_weight_kg &&
-        programSets[lastIndex + 1].target_reps_min === first.target_reps_min &&
-        programSets[lastIndex + 1].target_reps_max === first.target_reps_max
+        (progressionTrackId
+          ? programSets[lastIndex + 1].progression_track_id ===
+            progressionTrackId
+          : programSets[lastIndex + 1].target_weight_kg ===
+              first.target_weight_kg &&
+            programSets[lastIndex + 1].target_reps_min ===
+              first.target_reps_min &&
+            programSets[lastIndex + 1].target_reps_max ===
+              first.target_reps_max)
       ) {
         lastIndex += 1;
       }
@@ -251,19 +259,36 @@ async function applyDoubleProgression(
       });
 
       if (groupCompleted) {
-        updates.push(
-          supabase
-            .from("program_sets")
-            .update({
-              target_weight_kg:
-                targetWeight + Number(programExercise.weight_increment_kg ?? 2.5)
-            })
-            .in(
-              "id",
-              group.map((set) => set.id)
-            )
-            .then(() => undefined)
-        );
+        const nextWeight =
+          targetWeight + Number(programExercise.weight_increment_kg ?? 2.5);
+
+        if (progressionTrackId) {
+          updates.push(
+            supabase
+              .from("progression_tracks")
+              .update({ current_weight_kg: nextWeight })
+              .eq("id", progressionTrackId)
+              .then(() => undefined)
+          );
+          updates.push(
+            supabase
+              .from("program_sets")
+              .update({ target_weight_kg: nextWeight })
+              .eq("progression_track_id", progressionTrackId)
+              .then(() => undefined)
+          );
+        } else {
+          updates.push(
+            supabase
+              .from("program_sets")
+              .update({ target_weight_kg: nextWeight })
+              .in(
+                "id",
+                group.map((set) => set.id)
+              )
+              .then(() => undefined)
+          );
+        }
       }
 
       index = lastIndex + 1;

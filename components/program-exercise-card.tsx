@@ -44,6 +44,13 @@ export function ProgramExerciseCard({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const setSummaries = groupedSetSummaries(sets, exercise.exercise_category);
+  const progressionTrackNames = [
+    ...new Set(
+      sets
+        .map((set) => set.progression_track?.name)
+        .filter((name): name is string => Boolean(name))
+    )
+  ];
 
   function addSet() {
     setError(null);
@@ -75,6 +82,11 @@ export function ProgramExerciseCard({
             {formatKg(exercise.weight_increment_kg)}
             {exercise.track_as_main_lift ? " | main lift" : ""}
           </p>
+          {progressionTrackNames.length > 0 ? (
+            <p className="mt-1 text-xs font-bold text-[color:var(--muted)]">
+              Progresses with: {progressionTrackNames.join(", ")}
+            </p>
+          ) : null}
           <div className="mt-2 grid gap-1 text-sm text-[color:var(--muted)]">
             {setSummaries.length === 0 ? (
               <p>No sets</p>

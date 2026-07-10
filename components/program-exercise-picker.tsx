@@ -371,6 +371,19 @@ export function ProgramExercisePicker({
                 />
               </div>
             ) : null}
+            <details className="rounded-md border border-[color:var(--panel-border)] px-3 py-2">
+              <summary className="cursor-pointer text-xs font-black text-[color:var(--muted)]">
+                Advanced
+              </summary>
+              <label className="mt-3 flex min-h-10 items-center gap-2 text-xs font-black text-[color:var(--muted)]">
+                <input
+                  name="separateProgressionTrack"
+                  type="checkbox"
+                  className="size-4 accent-[color:var(--accent)]"
+                />
+                Keep this separate from matching lifts
+              </label>
+            </details>
           </div>
         )}
       </div>
