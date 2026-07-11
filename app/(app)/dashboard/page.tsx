@@ -56,7 +56,7 @@ function daySummary(day: ProgramDay | null) {
   }
 
   return {
-    exercises: day.exercises.slice(0, 4).map((exercise) => ({
+    exercises: day.exercises.map((exercise) => ({
       id: exercise.id,
       name: exercise.exercise_name,
       prescription: groupedSetSummaries(
