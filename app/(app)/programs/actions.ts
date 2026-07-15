@@ -1384,6 +1384,24 @@ export async function completeProgramEnrollment(formData: FormData) {
   redirect("/programs");
 }
 
+export async function restartActiveProgramBlock() {
+  const { supabase, user } = await requireUser();
+
+  await supabase
+    .from("program_enrollments")
+    .update({
+      current_week: 1,
+      started_on: todayDate()
+    })
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  revalidatePath("/dashboard");
+  revalidatePath("/progress");
+  revalidatePath("/programs/active");
+  redirect("/progress");
+}
+
 async function cancelActiveEnrollmentForProgram(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   userId: string,

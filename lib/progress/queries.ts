@@ -12,7 +12,8 @@ export type MainLiftProgress = {
   } | null;
   program_exercise_id: string;
   rep_range: string;
-  trend: {
+  start_weight_kg: number | null;
+  weekly_weights: {
     label: string;
     value: number | null;
     week: number;
@@ -124,14 +125,6 @@ function startOfYear(date: Date) {
   return new Date(date.getFullYear(), 0, 1);
 }
 
-function estimatedOneRepMax(weightKg: number, reps: number) {
-  if (reps <= 1) {
-    return weightKg;
-  }
-
-  return weightKg * (1 + reps / 30);
-}
-
 function firstWorkout(raw: RawWorkoutExercise["workouts"]) {
   return Array.isArray(raw) ? raw[0] ?? null : raw;
 }
@@ -179,8 +172,6 @@ function completedSetRows(row: RawWorkoutExercise) {
         achieved_at: set.completed_at,
         exercise_id: row.exercise_id,
         exercise_name: row.exercise_name_snapshot,
-        estimated_one_rep_max:
-          Math.round(estimatedOneRepMax(weightKg, reps) * 10) / 10,
         reps,
         program_set_id: set.program_set_id,
         started_at: workout.started_at,
@@ -243,8 +234,8 @@ function fallbackMainLiftsFromRows(rows: RawWorkoutExercise[]) {
         }
 
         const existing = bestByWeek.get(week) ?? null;
-        if (existing === null || set.estimated_one_rep_max > existing) {
-          bestByWeek.set(week, set.estimated_one_rep_max);
+        if (existing === null || set.weight_kg > existing) {
+          bestByWeek.set(week, set.weight_kg);
         }
       }
 
@@ -268,7 +259,8 @@ function fallbackMainLiftsFromRows(rows: RawWorkoutExercise[]) {
           : null,
         program_exercise_id: `logged:${exercise.exercise_id}`,
         rep_range: "logged",
-        trend: Array.from({ length: 12 }, (_, index) => {
+        start_weight_kg: firstSet?.weight_kg ?? null,
+        weekly_weights: Array.from({ length: 12 }, (_, index) => {
           const week = index + 1;
           return {
             label: `W${week}`,
@@ -426,11 +418,10 @@ async function getTrackMainLifts({
       );
 
       for (const set of completedSets) {
-        const estimate = set.estimated_one_rep_max;
         const existing = bestByWeek.get(week) ?? null;
 
-        if (existing === null || estimate > existing) {
-          bestByWeek.set(week, estimate);
+        if (existing === null || set.weight_kg > existing) {
+          bestByWeek.set(week, set.weight_kg);
         }
 
         if (
@@ -459,8 +450,8 @@ async function getTrackMainLifts({
 
     return {
       change_kg:
-        currentWeightKg !== null && firstLoggedWeight !== null
-          ? Math.round((currentWeightKg - firstLoggedWeight) * 100) / 100
+        lastResult !== null && firstLoggedWeight !== null
+          ? Math.round((lastResult.weight_kg - firstLoggedWeight) * 100) / 100
           : null,
       current_weight_kg: currentWeightKg,
       exercise_id: track.exercise_id,
@@ -468,7 +459,8 @@ async function getTrackMainLifts({
       last_result: lastResult,
       program_exercise_id: track.id,
       rep_range: repRangeLabel(track.reps_min, track.reps_max),
-      trend: Array.from({ length: blockLength }, (_, index) => {
+      start_weight_kg: firstLoggedWeight,
+      weekly_weights: Array.from({ length: blockLength }, (_, index) => {
         const week = index + 1;
         return {
           label: `W${week}`,

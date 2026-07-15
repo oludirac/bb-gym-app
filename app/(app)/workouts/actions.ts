@@ -53,7 +53,18 @@ type InlineWorkoutSetInput = {
 
 type InlineWorkoutSetMutationInput = {
   copySetId?: string | null;
+  distanceKm?: number | null;
+  durationSeconds?: number | null;
+  intensity?: string | null;
+  reps?: number | null;
+  restSeconds?: number | null;
+  weightKg?: number | null;
   workoutExerciseId: string;
+};
+
+type InlineWorkoutWeightInput = {
+  setIds: string[];
+  weightKg: number | string | null;
 };
 
 async function nextSortOrder(
@@ -303,34 +314,53 @@ async function moveWorkoutExerciseById(
   workoutExerciseId: string,
   direction: "down" | "later" | "up"
 ) {
-  const { data: current } = await supabase
+  const { data: current, error: currentError } = await supabase
     .from("workout_exercises")
     .select("id, workout_id, sort_order")
     .eq("id", workoutExerciseId)
     .maybeSingle();
 
-  if (!current) {
-    return;
+  if (currentError || !current) {
+    return { ok: false, patches: [] };
   }
 
-  const { data } = await supabase
+  const { data, error: exercisesError } = await supabase
     .from("workout_exercises")
     .select("id, sort_order")
     .eq("workout_id", current.workout_id)
     .order("sort_order", { ascending: true });
   const exercises = data ?? [];
 
+  if (exercisesError || exercises.length === 0) {
+    return { ok: false, patches: [] };
+  }
+
   if (direction === "later") {
     const maxOrder = Math.max(...exercises.map((exercise) => exercise.sort_order));
 
     if (current.sort_order === maxOrder) {
-      return;
+      return {
+        ok: true,
+        patches: exercises
+      };
     }
 
-    await supabase
+    const nextSortOrder = maxOrder + 1000;
+    const { error } = await supabase
       .from("workout_exercises")
-      .update({ sort_order: maxOrder + 1000 })
+      .update({ sort_order: nextSortOrder })
       .eq("id", current.id);
+
+    return error
+      ? { ok: false, patches: [] }
+      : {
+          ok: true,
+          patches: exercises.map((exercise) =>
+            exercise.id === current.id
+              ? { ...exercise, sort_order: nextSortOrder }
+              : exercise
+          )
+        };
   } else {
     const currentIndex = exercises.findIndex(
       (exercise) => exercise.id === current.id
@@ -339,28 +369,66 @@ async function moveWorkoutExerciseById(
     const target = exercises[targetIndex];
 
     if (!target) {
-      return;
+      return { ok: false, patches: [] };
     }
 
     const temporarySortOrder =
       Math.max(...exercises.map((exercise) => exercise.sort_order)) + 1000;
 
-    await supabase
+    const { error: temporaryError } = await supabase
       .from("workout_exercises")
       .update({ sort_order: temporarySortOrder })
       .eq("id", current.id);
 
-    await supabase
+    if (temporaryError) {
+      return { ok: false, patches: [] };
+    }
+
+    const { error: targetError } = await supabase
       .from("workout_exercises")
       .update({ sort_order: current.sort_order })
       .eq("id", target.id);
 
-    await supabase
+    if (targetError) {
+      await supabase
+        .from("workout_exercises")
+        .update({ sort_order: current.sort_order })
+        .eq("id", current.id);
+      return { ok: false, patches: [] };
+    }
+
+    const { error: finalError } = await supabase
       .from("workout_exercises")
       .update({ sort_order: target.sort_order })
       .eq("id", current.id);
-  }
 
+    if (finalError) {
+      await supabase
+        .from("workout_exercises")
+        .update({ sort_order: target.sort_order })
+        .eq("id", target.id);
+      await supabase
+        .from("workout_exercises")
+        .update({ sort_order: current.sort_order })
+        .eq("id", current.id);
+      return { ok: false, patches: [] };
+    }
+
+    return {
+      ok: true,
+      patches: exercises.map((exercise) => {
+        if (exercise.id === current.id) {
+          return { ...exercise, sort_order: target.sort_order };
+        }
+
+        if (exercise.id === target.id) {
+          return { ...exercise, sort_order: current.sort_order };
+        }
+
+        return exercise;
+      })
+    };
+  }
 }
 
 export async function moveWorkoutExerciseInline(input: {
@@ -370,16 +438,14 @@ export async function moveWorkoutExerciseInline(input: {
   const { supabase } = await requireUser();
 
   if (!["down", "later", "up"].includes(input.direction)) {
-    return { ok: false };
+    return { ok: false, patches: [] };
   }
 
-  await moveWorkoutExerciseById(
+  return moveWorkoutExerciseById(
     supabase,
     input.workoutExerciseId,
     input.direction
   );
-
-  return { ok: true };
 }
 
 export async function saveWorkoutSetWeightAsPlanWeight(input: {
@@ -393,14 +459,122 @@ export async function saveWorkoutSetWeightAsPlanWeight(input: {
     return { ok: false };
   }
 
-  await supabase
+  const { data: programSet } = await supabase
+    .from("program_sets")
+    .select(
+      "id, program_exercise_id, progression_track_id, target_reps_min, target_reps_max, target_weight_kg"
+    )
+    .eq("id", input.programSetId)
+    .maybeSingle();
+
+  if (!programSet?.program_exercise_id) {
+    return { ok: false };
+  }
+
+  let programSetIds: string[] = [];
+
+  if (programSet.progression_track_id) {
+    const { data: linkedSets, error: linkedSetsError } = await supabase
+      .from("program_sets")
+      .select("id")
+      .eq("progression_track_id", programSet.progression_track_id);
+
+    if (linkedSetsError) {
+      return { ok: false };
+    }
+
+    programSetIds = (linkedSets ?? []).map((set) => set.id as string);
+
+    const { error: trackError } = await supabase
+      .from("progression_tracks")
+      .update({ current_weight_kg: weightKg })
+      .eq("id", programSet.progression_track_id);
+
+    if (trackError) {
+      return { ok: false };
+    }
+  } else {
+    let matchingSetsQuery = supabase
+      .from("program_sets")
+      .select("id")
+      .eq("program_exercise_id", programSet.program_exercise_id);
+
+    matchingSetsQuery =
+      programSet.target_reps_min === null
+        ? matchingSetsQuery.is("target_reps_min", null)
+        : matchingSetsQuery.eq("target_reps_min", programSet.target_reps_min);
+
+    matchingSetsQuery =
+      programSet.target_reps_max === null
+        ? matchingSetsQuery.is("target_reps_max", null)
+        : matchingSetsQuery.eq("target_reps_max", programSet.target_reps_max);
+
+    matchingSetsQuery =
+      programSet.target_weight_kg === null
+        ? matchingSetsQuery.is("target_weight_kg", null)
+        : matchingSetsQuery.eq("target_weight_kg", programSet.target_weight_kg);
+
+    const { data: matchingSets, error: matchingSetsError } =
+      await matchingSetsQuery;
+
+    if (matchingSetsError) {
+      return { ok: false };
+    }
+
+    programSetIds = (matchingSets ?? []).map((set) => set.id as string);
+  }
+
+  const affectedProgramSetIds =
+    programSetIds.length > 0 ? programSetIds : [input.programSetId];
+  const { error: updateError } = await supabase
     .from("program_sets")
     .update({ target_weight_kg: weightKg })
-    .eq("id", input.programSetId);
+    .in("id", affectedProgramSetIds);
+
+  if (updateError) {
+    return { ok: false };
+  }
 
   revalidatePath("/programs");
   revalidatePath("/programs/active");
-  return { ok: true, weightKg };
+  revalidatePath("/dashboard");
+  revalidatePath("/progress");
+  return {
+    ok: true,
+    programSetIds: affectedProgramSetIds,
+    weightKg
+  };
+}
+
+export async function updateWorkoutSetWeightsInline(
+  input: InlineWorkoutWeightInput
+) {
+  const { supabase } = await requireUser();
+  const weightKg = optionalNumberFromValue(input.weightKg);
+  const setIds = [...new Set(input.setIds.filter(Boolean))];
+
+  if (weightKg === null || setIds.length === 0) {
+    return { error: "Missing sets or kg.", ok: false, sets: [] };
+  }
+
+  const { data, error } = await supabase
+    .from("workout_sets")
+    .update({ weight_kg: weightKg })
+    .in("id", setIds)
+    .is("completed_at", null)
+    .select("id, weight_kg");
+
+  if (error) {
+    return { error: error.message, ok: false, sets: [] };
+  }
+
+  return {
+    ok: true,
+    sets: (data ?? []).map((set) => ({
+      id: set.id,
+      weight_kg: set.weight_kg === null ? null : Number(set.weight_kg)
+    }))
+  };
 }
 
 export async function getExerciseOptionsForCategory(category: string) {
@@ -566,16 +740,17 @@ export async function addWorkoutSetInline(input: InlineWorkoutSetMutationInput) 
     .from("workout_sets")
     .insert({
       completed_at: null,
-      distance_km: copiedSet?.distance_km ?? null,
-      duration_seconds: copiedSet?.duration_seconds ?? null,
-      intensity: copiedSet?.intensity ?? null,
-      reps: copiedSet?.reps ?? null,
-      rest_seconds: copiedSet?.rest_seconds ?? null,
+      distance_km: copiedSet?.distance_km ?? input.distanceKm ?? null,
+      duration_seconds:
+        copiedSet?.duration_seconds ?? input.durationSeconds ?? null,
+      intensity: copiedSet?.intensity ?? input.intensity ?? null,
+      reps: copiedSet?.reps ?? input.reps ?? null,
+      rest_seconds: copiedSet?.rest_seconds ?? input.restSeconds ?? null,
       rir: copiedSet?.rir ?? null,
       rpe: copiedSet?.rpe ?? null,
       set_type: copiedSet?.set_type ?? "working",
       sort_order: sortOrder,
-      weight_kg: copiedSet?.weight_kg ?? null,
+      weight_kg: copiedSet?.weight_kg ?? input.weightKg ?? null,
       workout_exercise_id: input.workoutExerciseId
     })
     .select(

@@ -9,7 +9,6 @@ import {
   Flag,
   History,
   Plus,
-  Repeat2,
   RotateCcw,
   Settings,
   Trash2,
@@ -27,6 +26,7 @@ import {
   removeWorkoutExercise,
   saveWorkoutSetWeightAsPlanWeight,
   undoWorkoutSetInline,
+  updateWorkoutSetWeightsInline,
 } from "@/app/(app)/workouts/actions";
 import {
   bodyPartCategories,
@@ -93,25 +93,32 @@ function completedSetCount(workout: Workout) {
 
 function targetLabel(set: WorkoutSet, isCardio: boolean) {
   if (isCardio) {
+    const durationSeconds =
+      set.target_duration_seconds ?? set.duration_seconds;
+    const distanceKm = set.target_distance_km ?? set.distance_km;
+    const intensity = set.target_intensity ?? set.intensity;
     const parts = [
-      set.target_duration_seconds
-        ? `${Math.round(set.target_duration_seconds / 60)} min`
-        : null,
-      set.target_distance_km ? `${set.target_distance_km} km` : null,
-      set.target_intensity
+      durationSeconds ? `${Math.round(durationSeconds / 60)} min` : null,
+      distanceKm ? `${distanceKm} km` : null,
+      intensity
     ].filter(Boolean);
 
-    return parts.length > 0 ? parts.join(" | ") : "Open target";
+    return parts.length > 0 ? parts.join(" | ") : "Enter time or distance";
   }
 
-  const reps =
+  const targetReps =
     set.target_reps_min && set.target_reps_max
       ? `${set.target_reps_min}-${set.target_reps_max}`
       : set.target_reps_min ?? set.target_reps_max;
-  const weight =
-    set.target_weight_kg !== null ? `${formatNumber(set.target_weight_kg)}kg` : null;
+  const reps = targetReps ?? set.reps;
+  const weightKg = set.target_weight_kg ?? set.weight_kg;
+  const weight = weightKg !== null ? `${formatNumber(weightKg)}kg` : null;
 
-  return [weight, reps ? `${reps} reps` : null].filter(Boolean).join(" x ") || "Open target";
+  return (
+    [weight, reps !== null ? `${reps} reps` : null]
+      .filter(Boolean)
+      .join(" x ") || "Enter kg and reps"
+  );
 }
 
 function loggedLabel(set: WorkoutSet, isCardio: boolean) {
@@ -139,11 +146,7 @@ function firstIncomplete(workout: Workout) {
     }
   }
 
-  const firstExercise = workout.workoutExercises[0];
-  const firstSet = firstExercise?.sets[0];
-  return firstExercise && firstSet
-    ? { exerciseId: firstExercise.id, setId: firstSet.id }
-    : null;
+  return null;
 }
 
 function updateSet(
@@ -159,6 +162,105 @@ function updateSet(
         set.id === setId ? { ...set, ...patch } : set
       )
     }))
+  };
+}
+
+function updateSets(
+  workout: Workout,
+  setIds: Set<string>,
+  patch: Partial<WorkoutSet>
+) {
+  return {
+    ...workout,
+    workoutExercises: workout.workoutExercises.map((exercise) => ({
+      ...exercise,
+      sets: exercise.sets.map((set) =>
+        setIds.has(set.id) ? { ...set, ...patch } : set
+      )
+    }))
+  };
+}
+
+function reorderWorkoutExercises(
+  workout: Workout,
+  workoutExerciseId: string,
+  direction: "down" | "later" | "up"
+) {
+  const exercises = [...workout.workoutExercises];
+  const currentIndex = exercises.findIndex(
+    (exercise) => exercise.id === workoutExerciseId
+  );
+
+  if (currentIndex === -1) {
+    return workout;
+  }
+
+  if (direction === "later") {
+    const [item] = exercises.splice(currentIndex, 1);
+    exercises.push(item);
+  } else {
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+    if (!exercises[targetIndex]) {
+      return workout;
+    }
+
+    [exercises[currentIndex], exercises[targetIndex]] = [
+      exercises[targetIndex],
+      exercises[currentIndex]
+    ];
+  }
+
+  return {
+    ...workout,
+    workoutExercises: exercises.map((exercise, index) => ({
+      ...exercise,
+      sort_order: index + 1
+    }))
+  };
+}
+
+function applyOrderPatches(
+  workout: Workout,
+  patches: { id: string; sort_order: number }[]
+) {
+  const sortOrderById = new Map(
+    patches.map((patch) => [patch.id, patch.sort_order])
+  );
+
+  return {
+    ...workout,
+    workoutExercises: workout.workoutExercises
+      .map((exercise) => ({
+        ...exercise,
+        sort_order: sortOrderById.get(exercise.id) ?? exercise.sort_order
+      }))
+      .sort((a, b) => a.sort_order - b.sort_order)
+  };
+}
+
+function updateMatchingIncompleteSets(
+  workout: Workout,
+  exerciseId: string,
+  sourceSet: WorkoutSet,
+  patch: Partial<WorkoutSet>
+) {
+  return {
+    ...workout,
+    workoutExercises: workout.workoutExercises.map((exercise) =>
+      exercise.id === exerciseId
+        ? {
+            ...exercise,
+            sets: exercise.sets.map((set) =>
+              set.id !== sourceSet.id &&
+              !set.completed_at &&
+              hasSameTarget(sourceSet, set, exercise.exercise_category === "cardio")
+                ? { ...set, ...patch }
+                : set
+            )
+          }
+        : exercise
+    )
   };
 }
 
@@ -249,6 +351,15 @@ function shouldCopyToNext(
   }
 
   return !hasAnyTarget(next, isCardio) || hasSameTarget(current, next, isCardio);
+}
+
+function optionalDraftNumber(value: string) {
+  if (value.trim() === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function nextIncompleteAfter(
@@ -344,6 +455,7 @@ export function ActiveWorkoutConsole({
 }: ActiveWorkoutConsoleProps) {
   const [workout, setWorkout] = useState(activeWorkout);
   const [workoutError, setWorkoutError] = useState<string | null>(null);
+  const [workoutNotice, setWorkoutNotice] = useState<string | null>(null);
   const [focus, setFocus] = useState(() => firstIncomplete(activeWorkout));
   const [draftState, setDraftState] = useState<{
     draft: Draft;
@@ -393,6 +505,14 @@ export function ActiveWorkoutConsole({
     currentExercise && currentSet
       ? currentExercise.sets.findIndex((set) => set.id === currentSet.id) + 1
       : 0;
+  const currentExerciseIndex = currentExercise
+    ? workout.workoutExercises.findIndex(
+        (exercise) => exercise.id === currentExercise.id
+      )
+    : -1;
+  const canMoveCurrentLater =
+    currentExerciseIndex >= 0 &&
+    currentExerciseIndex < workout.workoutExercises.length - 1;
   const isCardio = currentExercise?.exercise_category === "cardio";
   const previousSet = currentExercise
     ? previousSetFor(currentExercise, currentSet)
@@ -403,6 +523,9 @@ export function ActiveWorkoutConsole({
       : buildDraft(currentSet, previousSet);
   const doneSets = completedSetCount(workout);
   const allSets = totalSetCount(workout);
+  const readyToFinish = allSets > 0 && doneSets >= allSets;
+  const requiresWeight = Boolean(currentExercise && currentSet && !isCardio);
+  const missingRequiredWeight = requiresWeight && draft.weightKg.trim() === "";
 
   const updateDraft = (patch: Partial<Draft>) => {
     setDraftState({
@@ -412,6 +535,63 @@ export function ActiveWorkoutConsole({
       },
       setId: currentSet?.id ?? null
     });
+  };
+
+  const updateWeightDraft = (weightKg: string) => {
+    updateDraft({ weightKg });
+
+    if (!currentExercise || !currentSet) {
+      return;
+    }
+
+    const weightValue = optionalDraftNumber(weightKg);
+
+    setWorkout((current) =>
+      updateMatchingIncompleteSets(current, currentExercise.id, currentSet, {
+        weight_kg: weightValue
+      })
+    );
+  };
+
+  const applyCurrentWeightToWorkout = async (showNotice = true) => {
+    if (!currentExercise || !currentSet) {
+      return false;
+    }
+
+    const weightKg = optionalDraftNumber(draft.weightKg);
+    const setIds = currentExercise.sets
+      .filter(
+        (set) =>
+          !set.completed_at &&
+          (set.id === currentSet.id ||
+            hasSameTarget(currentSet, set, currentExercise.exercise_category === "cardio"))
+      )
+      .map((set) => set.id);
+
+    if (weightKg === null || setIds.length === 0) {
+      setWorkoutError("Enter kg before saving this change.");
+      return false;
+    }
+
+    const previousWorkout = workout;
+    setWorkout(
+      updateSets(workout, new Set(setIds), {
+        weight_kg: weightKg
+      })
+    );
+    const result = await updateWorkoutSetWeightsInline({ setIds, weightKg });
+
+    if (!result.ok) {
+      setWorkout(previousWorkout);
+      setWorkoutError(result.error ?? "Could not update today's sets.");
+      return false;
+    }
+
+    if (showNotice) {
+      setWorkoutNotice("Kg updated for matching sets today.");
+    }
+
+    return true;
   };
 
   const loadExerciseCategory = (nextCategory: string) => {
@@ -474,23 +654,30 @@ export function ActiveWorkoutConsole({
     }
 
     setWorkoutError(null);
+
+    if (!isCardio && draft.weightKg.trim() === "") {
+      setWorkoutError("Set starting kg before completing this set.");
+      return;
+    }
+
     const restSeconds = currentSet.rest_seconds ?? defaultRestSeconds;
     const completedAt = new Date().toISOString();
     const patch: Partial<WorkoutSet> = isCardio
       ? {
           completed_at: completedAt,
-          distance_km: draft.distanceKm ? Number(draft.distanceKm) : null,
-          duration_seconds: draft.durationMinutes
-            ? Math.round(Number(draft.durationMinutes) * 60)
-            : null,
+          distance_km: optionalDraftNumber(draft.distanceKm),
+          duration_seconds:
+            optionalDraftNumber(draft.durationMinutes) === null
+              ? null
+              : Math.round(Number(draft.durationMinutes) * 60),
           intensity: draft.intensity || null,
           rest_seconds: restSeconds
         }
       : {
           completed_at: completedAt,
-          reps: draft.reps ? Number(draft.reps) : null,
+          reps: optionalDraftNumber(draft.reps),
           rest_seconds: restSeconds,
-          weight_kg: draft.weightKg ? Number(draft.weightKg) : null
+          weight_kg: optionalDraftNumber(draft.weightKg)
         };
 
     let optimistic = updateSet(workout, currentSet.id, patch);
@@ -519,6 +706,18 @@ export function ActiveWorkoutConsole({
               }
         );
       }
+    }
+
+    if (!isCardio) {
+      optimistic = updateMatchingIncompleteSets(
+        optimistic,
+        currentExercise.id,
+        currentSet,
+        {
+          reps: patch.reps ?? null,
+          weight_kg: patch.weight_kg ?? null
+        }
+      );
     }
 
     const previousWorkout = workout;
@@ -572,55 +771,55 @@ export function ActiveWorkoutConsole({
     direction: "down" | "later" | "up"
   ) => {
     const previousWorkout = workout;
+    const previousFocus = focus;
+    const movedExercise = workout.workoutExercises.find(
+      (exercise) => exercise.id === workoutExerciseId
+    );
+    const optimisticWorkout = reorderWorkoutExercises(
+      workout,
+      workoutExerciseId,
+      direction
+    );
+
+    if (optimisticWorkout === workout) {
+      return;
+    }
+
     setWorkoutError(null);
+    setWorkoutNotice(
+      direction === "later" && movedExercise
+        ? `Moved ${movedExercise.exercise_name_snapshot} later.`
+        : "Exercise order updated."
+    );
+    setWorkout(optimisticWorkout);
 
-    setWorkout((current) => {
-      const exercises = [...current.workoutExercises];
-      const currentIndex = exercises.findIndex(
-        (exercise) => exercise.id === workoutExerciseId
-      );
-
-      if (currentIndex === -1) {
-        return current;
-      }
-
-      if (direction === "later") {
-        const [item] = exercises.splice(currentIndex, 1);
-        exercises.push(item);
-      } else {
-        const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-
-        if (!exercises[targetIndex]) {
-          return current;
-        }
-
-        [exercises[currentIndex], exercises[targetIndex]] = [
-          exercises[targetIndex],
-          exercises[currentIndex]
-        ];
-      }
-
-      return {
-        ...current,
-        workoutExercises: exercises.map((exercise, index) => ({
-          ...exercise,
-          sort_order: index + 1
-        }))
-      };
-    });
+    if (direction === "later") {
+      setFocus(firstIncomplete(optimisticWorkout));
+    }
 
     startReorderTransition(async () => {
       const result = await moveWorkoutExerciseInline({ direction, workoutExerciseId });
 
       if (!result.ok) {
         setWorkout(previousWorkout);
+        setFocus(previousFocus);
+        setWorkoutNotice(null);
         setWorkoutError("Could not move lift.");
+        return;
       }
+
+      setWorkout((current) => applyOrderPatches(current, result.patches ?? []));
     });
   };
 
   const savePlanWeight = async () => {
     if (!currentSet?.program_set_id) {
+      return;
+    }
+
+    const workoutUpdated = await applyCurrentWeightToWorkout(false);
+
+    if (!workoutUpdated) {
       return;
     }
 
@@ -634,44 +833,82 @@ export function ActiveWorkoutConsole({
       return;
     }
 
-    setWorkout((current) =>
-      updateSet(current, currentSet.id, { target_weight_kg: result.weightKg })
-    );
+    setWorkoutNotice("Working weight saved for future workouts.");
+
+    setWorkout((current) => ({
+      ...current,
+      workoutExercises: current.workoutExercises.map((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set) =>
+          result.programSetIds?.includes(set.program_set_id ?? "")
+            ? { ...set, target_weight_kg: result.weightKg }
+            : set
+        )
+      }))
+    }));
   };
 
   const addSetToExercise = async (
     workoutExerciseId: string,
     copySetId?: string | null
   ) => {
+    const exercise = workout.workoutExercises.find(
+      (item) => item.id === workoutExerciseId
+    );
+    const sourceSet =
+      exercise?.sets.find((set) => set.id === copySetId) ??
+      exercise?.sets.at(-1) ??
+      null;
+
     setPendingSetMutationId(workoutExerciseId);
     const result = await addWorkoutSetInline({
-      copySetId,
+      copySetId: sourceSet?.id ?? null,
+      distanceKm: sourceSet?.distance_km ?? sourceSet?.target_distance_km,
+      durationSeconds:
+        sourceSet?.duration_seconds ?? sourceSet?.target_duration_seconds,
+      intensity: sourceSet?.intensity ?? sourceSet?.target_intensity,
+      reps:
+        sourceSet?.reps ??
+        sourceSet?.target_reps_min ??
+        sourceSet?.target_reps_max,
+      restSeconds: sourceSet?.rest_seconds,
+      weightKg: sourceSet?.weight_kg ?? sourceSet?.target_weight_kg,
       workoutExerciseId
     });
 
     if (result.ok && result.set) {
+      const addedSet = sourceSet
+        ? {
+            ...result.set,
+            target_distance_km: sourceSet.target_distance_km,
+            target_duration_seconds: sourceSet.target_duration_seconds,
+            target_intensity: sourceSet.target_intensity,
+            target_reps_max: sourceSet.target_reps_max,
+            target_reps_min: sourceSet.target_reps_min,
+            target_weight_kg: sourceSet.target_weight_kg
+          }
+        : result.set;
+
       setWorkout((current) => ({
         ...current,
         workoutExercises: current.workoutExercises.map((exercise) =>
           exercise.id === workoutExerciseId
             ? {
                 ...exercise,
-                sets: [...exercise.sets, result.set].sort(
+                sets: [...exercise.sets, addedSet].sort(
                   (a, b) => a.sort_order - b.sort_order
                 )
               }
             : exercise
         )
       }));
-      setFocus({ exerciseId: workoutExerciseId, setId: result.set.id });
+      setFocus({ exerciseId: workoutExerciseId, setId: addedSet.id });
     } else {
       setWorkoutError(result.error ?? "Could not add set.");
     }
 
     setPendingSetMutationId(null);
   };
-
-  const readyToFinish = allSets > 0 && doneSets >= allSets;
 
   return (
     <div className="space-y-4 pb-36">
@@ -698,13 +935,46 @@ export function ActiveWorkoutConsole({
         </p>
       ) : null}
 
-      {currentExercise && currentSet ? (
+      {workoutNotice ? (
+        <p className="rounded-md border border-[color:var(--success)]/40 bg-[color:var(--success)]/10 p-3 text-sm font-bold text-[color:var(--success)]">
+          {workoutNotice}
+        </p>
+      ) : null}
+
+      {readyToFinish ? (
+        <section className="rounded-md border border-[color:var(--success)]/45 bg-[color:var(--panel)] p-4">
+          <p className="text-sm font-black text-[color:var(--success)]">
+            All sets done
+          </p>
+          <h2 className="mt-2 text-2xl font-black">All sets complete</h2>
+          <p className="mt-1 text-sm font-bold text-[color:var(--muted)]">
+            {doneSets}/{allSets} sets complete.
+          </p>
+          <div className="mt-4 grid gap-2">
+            <form action={finishWorkout}>
+              <input type="hidden" name="workoutId" value={workout.id} />
+              <FormSubmitButton pendingLabel="Completing...">
+                <Flag aria-hidden="true" className="size-5" />
+                Complete workout
+              </FormSubmitButton>
+            </form>
+            <button
+              type="button"
+              onClick={() =>
+                setExpandedCompleted(
+                  new Set(workout.workoutExercises.map((exercise) => exercise.id))
+                )
+              }
+              className="inline-flex min-h-12 w-full items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black"
+            >
+              Check sets
+            </button>
+          </div>
+        </section>
+      ) : currentExercise && currentSet ? (
         <section className="overflow-hidden border-y border-[color:var(--panel-border)]">
           <div className="border-b border-[color:var(--panel-border)] py-4">
-            <p className="text-xs font-black uppercase text-[color:var(--muted)]">
-              Focus mode
-            </p>
-            <div className="mt-2 flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="truncate text-2xl font-black">
                   {currentExercise.exercise_name_snapshot}
@@ -713,8 +983,20 @@ export function ActiveWorkoutConsole({
                   Set {currentSetNumber} of {currentExercise.sets.length}
                 </p>
               </div>
-              <div className="grid size-11 shrink-0 place-items-center rounded-md bg-[color:var(--accent)] text-lg font-black text-zinc-950">
-                {currentSetNumber}
+              <div className="flex shrink-0 items-center gap-2">
+                {canMoveCurrentLater ? (
+                  <button
+                    type="button"
+                    onClick={() => moveExercise(currentExercise.id, "later")}
+                    disabled={isReordering}
+                    className="min-h-11 rounded-md border border-[color:var(--panel-border)] px-3 text-xs font-black disabled:cursor-wait disabled:opacity-50"
+                  >
+                    Do later
+                  </button>
+                ) : null}
+                <div className="grid size-11 place-items-center rounded-md bg-[color:var(--accent)] text-lg font-black text-zinc-950">
+                  {currentSetNumber}
+                </div>
               </div>
             </div>
 
@@ -801,7 +1083,7 @@ export function ActiveWorkoutConsole({
               <div className="grid gap-3">
                 <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel)] p-4">
                   <p className="text-xs font-black uppercase text-[color:var(--muted)]">
-                    Planned weight
+                    {missingRequiredWeight ? "Set starting kg" : "Planned weight"}
                   </p>
                   <p className="mt-1 text-4xl font-black">
                     {draft.weightKg || "-"}kg
@@ -809,6 +1091,23 @@ export function ActiveWorkoutConsole({
                   <p className="mt-1 text-sm font-bold text-[color:var(--muted)]">
                     {targetLabel(currentSet, false)}
                   </p>
+                  {missingRequiredWeight ? (
+                    <label className="mt-3 grid gap-1">
+                      <span className="text-xs font-black uppercase text-[color:var(--muted)]">
+                        kg
+                      </span>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.25"
+                        value={draft.weightKg}
+                        onChange={(event) => updateWeightDraft(event.target.value)}
+                        className="field-base min-h-12 text-center text-xl font-black"
+                        autoFocus
+                      />
+                    </label>
+                  ) : null}
                 </div>
 
                 <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
@@ -848,14 +1147,14 @@ export function ActiveWorkoutConsole({
                   <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between text-sm font-black text-[color:var(--muted)]">
                     <span className="inline-flex items-center gap-2">
                       <Settings aria-hidden="true" className="size-4" />
-                      Advanced
+                      Change kg
                     </span>
-                    Override
+                    kg
                   </summary>
                   <div className="mt-3 grid gap-2">
                     <label className="grid gap-1">
                       <span className="text-xs font-black uppercase text-[color:var(--muted)]">
-                        Override kg
+                        kg
                       </span>
                       <input
                         type="number"
@@ -864,20 +1163,25 @@ export function ActiveWorkoutConsole({
                         step="0.25"
                         value={draft.weightKg}
                         onChange={(event) =>
-                          updateDraft({
-                            weightKg: event.target.value
-                          })
+                          updateDraft({ weightKg: event.target.value })
                         }
                         className="field-base min-h-12 text-center text-xl font-black"
                       />
                     </label>
                     <button
                       type="button"
+                      onClick={() => applyCurrentWeightToWorkout()}
+                      className="min-h-11 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-black"
+                    >
+                      Today only
+                    </button>
+                    <button
+                      type="button"
                       onClick={savePlanWeight}
                       disabled={!currentSet.program_set_id}
                       className="min-h-11 rounded-md border border-[color:var(--panel-border)] px-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Use as new plan weight
+                      Save working weight
                     </button>
                   </div>
                 </details>
@@ -887,11 +1191,15 @@ export function ActiveWorkoutConsole({
             <button
               type="button"
               onClick={completeCurrentSet}
-              disabled={savingSetId === currentSet.id}
+              disabled={savingSetId === currentSet.id || missingRequiredWeight}
               className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-md bg-[color:var(--accent)] px-4 text-base font-black text-zinc-950 transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
             >
               <Check aria-hidden="true" className="size-5" />
-              {currentSet.completed_at ? "Update set" : "Complete set"}
+              {missingRequiredWeight
+                ? "Set kg first"
+                : currentSet.completed_at
+                  ? "Update set"
+                  : "Complete set"}
             </button>
 
             <RestPanel
@@ -913,7 +1221,7 @@ export function ActiveWorkoutConsole({
         <section className="app-card-flat p-4">
           <h2 className="text-base font-black">No lifts yet</h2>
           <p className="mt-1 text-sm leading-6 text-[color:var(--muted)]">
-            Open Workout tools and add the first lift.
+            Open the workout menu and add the first exercise.
           </p>
         </section>
       )}
@@ -923,10 +1231,16 @@ export function ActiveWorkoutConsole({
           onClick={() => loadExerciseCategory(addLiftCategory)}
           className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black"
         >
-          Workout tools
+          Workout menu
           <Plus aria-hidden="true" className="size-4 text-[color:var(--muted)]" />
         </summary>
         <div className="mt-3 grid gap-4">
+          <div>
+            <h2 className="text-base font-black">Add exercise</h2>
+            <p className="mt-1 text-sm text-[color:var(--muted)]">
+              Pick a body part, then an exercise.
+            </p>
+          </div>
           <form action={addExerciseToWorkout} className="grid gap-2">
             <input type="hidden" name="workoutId" value={workout.id} />
             <label className="grid gap-1">
@@ -1014,17 +1328,13 @@ export function ActiveWorkoutConsole({
               </FormSubmitButton>
             </form>
           </div>
-        </div>
-      </details>
-
-      <details className="app-card-flat p-3">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 text-sm font-black">
-          Full workout
-          <span className="text-xs text-[color:var(--muted)]">
-            Add, reorder, edit
-          </span>
-        </summary>
-        <div className="mt-3 space-y-3">
+          <div className="border-t border-[color:var(--panel-border)] pt-4">
+            <h2 className="text-base font-black">All exercises</h2>
+            <p className="mt-1 text-sm text-[color:var(--muted)]">
+              Open an exercise, change today&apos;s order, or add a set.
+            </p>
+          </div>
+          <div className="space-y-3">
         {workout.workoutExercises.map((exercise, index) => {
           const done = completedCount(exercise);
           const isExpanded = expandedCompleted.has(exercise.id);
@@ -1032,27 +1342,47 @@ export function ActiveWorkoutConsole({
           const lastCompleted = [...exercise.sets]
             .reverse()
             .find((set) => set.completed_at);
+          const exerciseFocusSet =
+            exercise.sets.find((set) => !set.completed_at) ?? exercise.sets[0];
 
           return (
             <article key={exercise.id} className="app-card-flat overflow-hidden">
-              <div className="flex items-start justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <h3 className="truncate text-lg font-black">
-                    {exercise.exercise_name_snapshot}
-                  </h3>
-                  <p className="mt-1 text-sm text-[color:var(--muted)]">
-                    {done}/{exercise.sets.length} completed
-                  </p>
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-black">
+                      {exercise.exercise_name_snapshot}
+                    </h3>
+                    <p className="mt-1 text-sm text-[color:var(--muted)]">
+                      {done}/{exercise.sets.length} completed
+                    </p>
+                  </div>
+                  {exerciseFocusSet ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFocus({
+                          exerciseId: exercise.id,
+                          setId: exerciseFocusSet.id
+                        })
+                      }
+                      className="min-h-10 shrink-0 rounded-md border border-[color:var(--panel-border)] px-3 text-xs font-black"
+                    >
+                      Open
+                    </button>
+                  ) : null}
                 </div>
-                <div className="flex shrink-0 gap-2">
+
+                <div className="mt-3 grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => moveExercise(exercise.id, "up")}
                     disabled={index === 0 || isReordering}
-                    className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+                    className="inline-flex min-h-10 items-center justify-center gap-1 rounded-md border border-[color:var(--panel-border)] px-2 text-xs font-black text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
                     aria-label="Move exercise up today"
                   >
                     <ArrowUp aria-hidden="true" className="size-4" />
+                    Up
                   </button>
                   <button
                     type="button"
@@ -1061,10 +1391,11 @@ export function ActiveWorkoutConsole({
                       index === workout.workoutExercises.length - 1 ||
                       isReordering
                     }
-                    className="inline-flex size-10 items-center justify-center rounded-xl border border-[color:var(--panel-border)] text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+                    className="inline-flex min-h-10 items-center justify-center gap-1 rounded-md border border-[color:var(--panel-border)] px-2 text-xs font-black text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
                     aria-label="Move exercise down today"
                   >
                     <ArrowDown aria-hidden="true" className="size-4" />
+                    Down
                   </button>
                   <button
                     type="button"
@@ -1073,10 +1404,14 @@ export function ActiveWorkoutConsole({
                       index === workout.workoutExercises.length - 1 ||
                       isReordering
                     }
-                    className="min-h-10 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
+                    className="min-h-10 rounded-md border border-[color:var(--panel-border)] px-2 text-xs font-black text-[color:var(--muted)] disabled:cursor-not-allowed disabled:opacity-35"
                   >
-                    Later
+                    Do later
                   </button>
+                </div>
+
+                {isComplete || lastCompleted ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2">
                   {isComplete ? (
                     <button
                       type="button"
@@ -1091,23 +1426,24 @@ export function ActiveWorkoutConsole({
                           return next;
                         })
                       }
-                      className="min-h-10 rounded-xl border border-[color:var(--panel-border)] px-3 text-xs font-black"
+                      className="min-h-10 rounded-md border border-[color:var(--panel-border)] px-3 text-xs font-black"
                     >
-                      Edit
+                      {isExpanded ? "Hide sets" : "Check sets"}
                     </button>
                   ) : null}
                   {lastCompleted ? (
                     <button
                       type="button"
                       onClick={() => undoSet(exercise.id, lastCompleted.id)}
-                      className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-3 text-xs font-black"
+                      className="inline-flex min-h-10 items-center justify-center gap-1 rounded-md border border-[color:var(--panel-border)] px-3 text-xs font-black"
                     >
                       <RotateCcw aria-hidden="true" className="size-3.5" />
-                      Undo
+                      Undo last
                     </button>
                   ) : null}
+                  </div>
+                ) : null}
                 </div>
-              </div>
 
               {!isComplete || isExpanded ? (
                 <div className="space-y-2 border-t border-[color:var(--panel-border)] p-3">
@@ -1142,29 +1478,15 @@ export function ActiveWorkoutConsole({
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-3 gap-2 border-t border-[color:var(--panel-border)] p-3">
+              <div className="grid grid-cols-2 gap-2 border-t border-[color:var(--panel-border)] p-3">
                 <button
                   type="button"
                   onClick={() => addSetToExercise(exercise.id)}
                   disabled={pendingSetMutationId === exercise.id}
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black disabled:cursor-wait disabled:opacity-70"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-[color:var(--panel-border)] px-2 text-xs font-black disabled:cursor-wait disabled:opacity-70"
                 >
                   <Plus aria-hidden="true" className="size-4" />
-                  {pendingSetMutationId === exercise.id ? "Adding..." : "Set"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    addSetToExercise(exercise.id, exercise.sets.at(-1)?.id)
-                  }
-                  disabled={
-                    pendingSetMutationId === exercise.id ||
-                    exercise.sets.length === 0
-                  }
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--panel-border)] px-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <Repeat2 aria-hidden="true" className="size-4" />
-                  {pendingSetMutationId === exercise.id ? "Copying..." : "Copy"}
+                  {pendingSetMutationId === exercise.id ? "Adding..." : "Add set"}
                 </button>
                 <form action={removeWorkoutExercise}>
                   <input
@@ -1174,32 +1496,20 @@ export function ActiveWorkoutConsole({
                   />
                   <FormSubmitButton
                     pendingLabel="..."
-                    className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-xl border border-[color:var(--danger)]/50 px-2 text-xs font-black text-red-200"
+                    className="inline-flex min-h-11 w-full items-center justify-center gap-1 rounded-md border border-[color:var(--danger)]/50 px-2 text-xs font-black text-red-200"
                   >
                     <Trash2 aria-hidden="true" className="size-4" />
-                    Lift
+                    Remove
                   </FormSubmitButton>
                 </form>
               </div>
             </article>
           );
         })}
+          </div>
         </div>
       </details>
 
-      {readyToFinish ? (
-        <div className="fixed inset-x-0 bottom-[5.75rem] z-20 px-4">
-          <div className="mx-auto max-w-md rounded-md border border-[color:var(--panel-border)] bg-[color:var(--background)] p-2 backdrop-blur-xl">
-            <form action={finishWorkout}>
-              <input type="hidden" name="workoutId" value={workout.id} />
-              <FormSubmitButton pendingLabel="Completing...">
-                <Flag aria-hidden="true" className="size-5" />
-                Complete workout
-              </FormSubmitButton>
-            </form>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

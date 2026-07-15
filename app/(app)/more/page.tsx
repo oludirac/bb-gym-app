@@ -20,7 +20,8 @@ const moreItems = [
   { href: "/exercises", icon: LibraryBig, label: "Exercise list", meta: "Library" },
   { href: "/bodyweight", icon: Scale, label: "Weight", meta: "Weigh-ins" },
   { href: "/goals", icon: Target, label: "Goals", meta: "Targets" },
-  { href: "/import/programs", icon: FileUp, label: "Import", meta: "Plan CSV" },
+  { href: "/import/workouts", icon: FileUp, label: "Import workout", meta: "One session" },
+  { href: "/import/programs", icon: FileUp, label: "Import plan", meta: "Plan CSV" },
   { href: "/export", icon: Download, label: "Export", meta: "Backups" },
   { href: "/install", icon: Smartphone, label: "Install", meta: "Home Screen" },
   { href: "/settings", icon: Settings, label: "Settings", meta: "Name and units" }

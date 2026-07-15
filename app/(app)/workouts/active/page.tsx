@@ -40,6 +40,12 @@ export default async function ActiveWorkoutPage() {
                 Blank workout
               </FormSubmitButton>
             </form>
+            <Link
+              href="/import/workouts"
+              className="inline-flex min-h-12 items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-base font-extrabold"
+            >
+              Import workout
+            </Link>
           </div>
         </section>
 

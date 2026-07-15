@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { BarChart3, Dumbbell, Scale, Trophy } from "lucide-react";
+import { restartActiveProgramBlock } from "@/app/(app)/programs/actions";
+import { FormSubmitButton } from "@/components/form-submit-button";
 import {
   getProgressSummary,
   type MainLiftProgress
 } from "@/lib/progress/queries";
 import { requireUser } from "@/lib/auth/session";
-import { formatWeight } from "@/lib/unit-conversion";
+import { formatWeight, kgToDisplayUnit } from "@/lib/unit-conversion";
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -23,38 +25,111 @@ function formatSignedKg(value: number | null, unit: "kg" | "lb") {
   return `${sign}${formatWeight(value, unit)}`;
 }
 
-function MiniTrend({ lift }: { lift: MainLiftProgress }) {
-  const values = lift.trend
-    .map((point) => point.value)
+function WeightTrend({
+  lift,
+  unit
+}: {
+  lift: MainLiftProgress;
+  unit: "kg" | "lb";
+}) {
+  const values = lift.weekly_weights
+    .map((point) =>
+      point.value === null ? null : kgToDisplayUnit(point.value, unit)
+    )
     .filter((value): value is number => value !== null);
-  const min = values.length > 0 ? Math.min(...values) : 0;
-  const max = values.length > 0 ? Math.max(...values) : 1;
-  const range = Math.max(1, max - min);
+
+  if (values.length < 2) {
+    return null;
+  }
+
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const padding = Math.max(1, (max - min) * 0.15);
+  const chartMin = min - padding;
+  const chartMax = max + padding;
+  const chartRange = chartMax - chartMin;
+  const totalWeeks = Math.max(2, lift.weekly_weights.length);
+  const segments: { x: number; y: number }[][] = [];
+  let segment: { x: number; y: number }[] = [];
+
+  lift.weekly_weights.forEach((point, index) => {
+    if (point.value === null) {
+      if (segment.length > 0) {
+        segments.push(segment);
+        segment = [];
+      }
+      return;
+    }
+
+    const displayValue = kgToDisplayUnit(point.value, unit);
+    segment.push({
+      x: 12 + (index / (totalWeeks - 1)) * 276,
+      y: 10 + ((chartMax - displayValue) / chartRange) * 72
+    });
+  });
+
+  if (segment.length > 0) {
+    segments.push(segment);
+  }
 
   return (
-    <div className="mt-4 flex h-20 items-end gap-1">
-      {lift.trend.map((point) => {
-        const height =
-          point.value === null ? 4 : Math.max(12, ((point.value - min) / range) * 64 + 12);
-
-        return (
-          <div key={point.week} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-            <div className="flex h-16 w-full items-end rounded-lg bg-[color:var(--panel-raised)] p-1">
-              <div
-                className={`w-full rounded-md ${
-                  point.value === null
-                    ? "bg-[color:var(--panel-border)]"
-                    : "bg-[color:var(--accent)]"
-                }`}
-                style={{ height }}
+    <div className="mt-4 border-t border-[color:var(--panel-border)] pt-3">
+      <div className="mb-2 flex items-center justify-between gap-3 text-[11px] font-black text-[color:var(--muted)]">
+        <span>Working weight</span>
+        <span>{unit}</span>
+      </div>
+      <svg
+        viewBox="0 0 300 104"
+        role="img"
+        aria-label={`${lift.exercise_name} working weight over ${lift.weekly_weights.length} weeks`}
+        className="h-28 w-full overflow-visible"
+      >
+        <line
+          x1="12"
+          x2="288"
+          y1="82"
+          y2="82"
+          stroke="var(--panel-border)"
+          strokeWidth="1"
+        />
+        {segments.map((points, segmentIndex) => (
+          <g key={segmentIndex}>
+            {points.length > 1 ? (
+              <polyline
+                points={points.map((point) => `${point.x},${point.y}`).join(" ")}
+                fill="none"
+                stroke="var(--accent)"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="3"
               />
-            </div>
-            <p className="text-[9px] font-black text-[color:var(--muted)]">
-              {point.label}
-            </p>
-          </div>
-        );
-      })}
+            ) : null}
+            {points.map((point) => (
+              <circle
+                key={`${point.x}:${point.y}`}
+                cx={point.x}
+                cy={point.y}
+                r="3.5"
+                fill="var(--background)"
+                stroke="var(--accent)"
+                strokeWidth="2.5"
+              />
+            ))}
+          </g>
+        ))}
+        <text x="12" y="100" fill="var(--muted)" fontSize="9">
+          W1
+        </text>
+        <text
+          x="288"
+          y="100"
+          fill="var(--muted)"
+          fontSize="9"
+          textAnchor="end"
+        >
+          W{lift.weekly_weights.length}
+        </text>
+      </svg>
     </div>
   );
 }
@@ -75,17 +150,28 @@ function MainLiftCard({
             {lift.rep_range} reps
           </p>
         </div>
-        <div className="rounded-md bg-[color:var(--accent)] px-3 py-2 text-sm font-black text-zinc-950">
-          {lift.current_weight_kg === null
-            ? "-"
-            : formatWeight(lift.current_weight_kg, unit)}
+        <div className="shrink-0 rounded-md bg-[color:var(--accent)] px-3 py-2 text-right text-zinc-950">
+          <p className="text-[10px] font-black uppercase">Next</p>
+          <p className="text-sm font-black">
+            {lift.current_weight_kg === null
+              ? "-"
+              : formatWeight(lift.current_weight_kg, unit)}
+          </p>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
+      <div className="mt-4 grid grid-cols-3 gap-2">
         <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-            Last
+            Start
+          </p>
+          <p className="mt-1 text-sm font-black">
+            {formatWeight(lift.start_weight_kg, unit)}
+          </p>
+        </div>
+        <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
+          <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
+            Latest
           </p>
           <p className="mt-1 text-sm font-black">
             {lift.last_result
@@ -97,7 +183,7 @@ function MainLiftCard({
         </div>
         <div className="rounded-md border border-[color:var(--panel-border)] bg-[color:var(--panel-raised)] p-3">
           <p className="text-[11px] font-black uppercase text-[color:var(--muted)]">
-            Since first
+            Change
           </p>
           <p className="mt-1 text-sm font-black">
             {formatSignedKg(lift.change_kg, unit)}
@@ -105,7 +191,7 @@ function MainLiftCard({
         </div>
       </div>
 
-      <MiniTrend lift={lift} />
+      <WeightTrend lift={lift} unit={unit} />
     </article>
   );
 }
@@ -139,6 +225,9 @@ export default async function ProgressPage() {
               <p className="mt-2 text-sm text-[color:var(--muted)]">
                 Started {formatDate(summary.active_block.started_on)}
               </p>
+              <p className="mt-1 text-xs font-bold text-[color:var(--muted)]">
+                Week is based on when this block started.
+              </p>
             </div>
             <Dumbbell
               aria-hidden="true"
@@ -164,6 +253,14 @@ export default async function ProgressPage() {
               </p>
             </div>
           </div>
+          <form action={restartActiveProgramBlock} className="mt-4">
+            <FormSubmitButton
+              pendingLabel="Restarting..."
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[color:var(--panel-border)] px-4 text-sm font-black text-[color:var(--foreground)] transition active:scale-[0.99] disabled:cursor-wait disabled:opacity-70"
+            >
+              Restart 12-week block from today
+            </FormSubmitButton>
+          </form>
         </section>
       ) : (
         <section className="app-card p-5">

@@ -31,6 +31,18 @@ function formatDuration(seconds: number | null) {
   })} min`;
 }
 
+function completedSetCount(workout: Awaited<ReturnType<typeof getWorkoutDetail>>) {
+  if (!workout) {
+    return 0;
+  }
+
+  return workout.workoutExercises.reduce(
+    (total, exercise) =>
+      total + exercise.sets.filter((set) => set.completed_at).length,
+    0
+  );
+}
+
 export default async function WorkoutDetailPage({
   params
 }: WorkoutDetailPageProps) {
@@ -40,6 +52,9 @@ export default async function WorkoutDetailPage({
   if (!workout) {
     notFound();
   }
+
+  const isCompleted = workout.status === "completed";
+  const completedSets = completedSetCount(workout);
 
   return (
     <div className="space-y-6">
@@ -52,13 +67,14 @@ export default async function WorkoutDetailPage({
         </Link>
         <header className="space-y-2">
           <p className="text-sm font-medium capitalize text-[color:var(--accent)]">
-            {workout.status}
+            {isCompleted ? "Workout complete" : workout.status}
           </p>
           <h1 className="text-3xl font-semibold tracking-normal">
             {workout.name ?? "Workout"}
           </h1>
           <p className="text-sm leading-6 text-[color:var(--muted)]">
             Started {formatDate(workout.started_at)}
+            {workout.finished_at ? ` - Finished ${formatDate(workout.finished_at)}` : ""}
           </p>
         </header>
       </div>
@@ -68,8 +84,17 @@ export default async function WorkoutDetailPage({
         <p className="mt-2 text-sm text-[color:var(--muted)]">
           {workout.workoutExercises.length} exercise
           {workout.workoutExercises.length === 1 ? "" : "s"} -{" "}
+          {completedSets} completed set{completedSets === 1 ? "" : "s"} -{" "}
           {Number(workout.total_volume_kg ?? 0).toLocaleString()} kg volume
         </p>
+        {isCompleted ? (
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-md bg-[color:var(--accent)] px-4 text-sm font-black text-zinc-950"
+          >
+            Back to Today
+          </Link>
+        ) : null}
       </section>
 
       <section className="space-y-3">
